@@ -18,9 +18,6 @@ all: sensor
 
 default: sensor
 
-writer: writer.o
-	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
-
 sensor: sensor.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
