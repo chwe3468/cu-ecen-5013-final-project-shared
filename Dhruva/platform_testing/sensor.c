@@ -26,7 +26,7 @@ typedef struct{
 static void timer_thread(union sigval sigval);
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time);
 static inline void timespec_add(struct timespec *result, const struct timespec *ts_1, const struct timespec *ts_2);
-// static void daemonize(void);
+static void daemonize(void);
 void sig_handler(int signo);
 
 timer_t timerid;
@@ -59,7 +59,7 @@ int main(void){
 	printf("Set up handler\n");
 
 	// daemonize
-    // daemonize();
+    daemonize();
 
     int clock_id = CLOCK_MONOTONIC;
     memset(&sev, 0, sizeof(struct sigevent));
@@ -72,7 +72,7 @@ int main(void){
     }
 
 	setup_timer(clock_id, timerid, 5, &start_time);
-	printf("Set up timer\n");
+	syslog(LOG_INFO, "Set up timer\n");
 	int i = 0;
 	while(1){
 		if(sig_handler_exit){
@@ -97,7 +97,7 @@ int main(void){
 static void timer_thread(union sigval sigval){
     thread_data_t *td = (thread_data_t*) sigval.sival_ptr;
     int ret = 0;
-	printf("In timer thread\n");
+	syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
@@ -112,7 +112,7 @@ static void timer_thread(union sigval sigval){
 			syslog(LOG_ERR, "sensor: failed to get sensor temp value, errno: %d (%s), exit status: %d", errno, strerror(errno), ret);
 			perror("system(getsensor.sh)");
 		}
-		printf("ran temperature script\n");
+		syslog(LOG_INFO, "ran temperature script\n");
 		// restore SIGCHLD to ignore to prevent zombie processes
 		// if(signal(SIGCHLD, SIG_IGN) != SIG_DFL){
 		// 	syslog(LOG_ERR, "sensor: failed to restore SIGCHLD behaviour, errno: %d (%s)", errno, strerror(errno));
@@ -167,34 +167,34 @@ static inline void timespec_add( struct timespec *result, const struct timespec 
 
 
 // daemonize program
-// static void daemonize(void){
-// 	pid_t pid;
-// 	// fork and exit parent if success
-// 	pid = fork();
-// 	if(pid < 0){
-// 		// Fork failed
-// 		exit(1);
-// 	}
-// 	if (pid > 0){
-// 		// Fork success
-// 		exit(0);
-// 	}
-// 	// create new session id for child
-// 	if(setsid() < 0){
-// 		exit(1);
-// 	}
-// 	// catch and ignore HUP and CHLD signals
-// 	signal(SIGCHLD, SIG_IGN);
-// 	signal(SIGHUP, SIG_IGN);
-// 	// change filemode mask
-// 	umask(0);
-// 	openlog("sensor-daemon", LOG_PID, LOG_DAEMON);
-// 	// change working dir to "/"
-// 	if((chdir("/")) < 0){
-// 		exit(1);
-// 	}
-// 	syslog(LOG_NOTICE, "sensor daemonized");
-// }
+static void daemonize(void){
+	pid_t pid;
+	// fork and exit parent if success
+	pid = fork();
+	if(pid < 0){
+		// Fork failed
+		exit(1);
+	}
+	if (pid > 0){
+		// Fork success
+		exit(0);
+	}
+	// create new session id for child
+	if(setsid() < 0){
+		exit(1);
+	}
+	// catch and ignore HUP and CHLD signals
+	signal(SIGCHLD, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	// change filemode mask
+	umask(0);
+	openlog("sensor-daemon", LOG_PID, LOG_DAEMON);
+	// change working dir to "/"
+	if((chdir("/")) < 0){
+		exit(1);
+	}
+	syslog(LOG_NOTICE, "sensor daemonized");
+}
 
 
 // signal handler to catch signals, shutdwn socket 
