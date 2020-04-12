@@ -32,6 +32,8 @@
 /*Uncommment to Timestamp the log*/
 //#define TIMESTAMP 1
 
+//Path to log directory
+#define LOG_DIR "./logs/"
 
 typedef struct node
 {
@@ -41,6 +43,7 @@ typedef struct node
   bool thread_complete;
   int connection_id;
   char * IPBuffer;
+  char logFile [50];
 } Node;
 
 /*Global variables*/
@@ -76,6 +79,54 @@ static void signal_handler (int signo)
   return;
 }
 
+
+/*Add a timestamp to a given filepointer
+ * Mutex for file is locked by caller thread
+ */
+void addTimestamp(FILE * fp)
+{
+	int err = 0;
+	if(!fp)
+	{
+		perror("Invalid file pointer");
+		syslog(LOG_ERR, "Invalid FP passed to addTimestamp");
+		return;
+	}
+	
+	time_t raw;
+  	struct tm *curr;
+
+  	time(&raw);
+  	curr = localtime(&raw);
+  	if(curr == NULL)
+  	{
+   		err = errno;
+    		syslog(LOG_ERR, "error getting current time: %s", strerror(err));
+    		return;
+  	}
+
+
+	char timestamp[80] = {0};
+	strftime(timestamp, sizeof(timestamp),"%a, %d %b %Y %T %z: ", curr);
+
+	int written;
+  	int to_write = strlen(timestamp);
+  	while((written = fwrite(timestamp, sizeof(char), strlen(timestamp), fp)) != to_write)
+  	{
+    		to_write -= written;
+    		if(written == EOF)
+    		{
+      			err = errno;
+      			perror("Write rxbuffer");
+      			syslog(LOG_ERR, "Could not write rxbuffer, errno: %s", strerror(err));
+
+     			 return;
+    		}
+  	}
+
+	return;
+}
+
 /*
 * Processes incoming packets from a TCP socket.
 *
@@ -84,23 +135,30 @@ static void signal_handler (int signo)
 void * processRX(void * args)
 {
 
+  /*Extract the needed information and free the arguments struct from heap*/
+  pthread_mutex_lock(&((Node *)args)->nodeLock);
+  Node * info = (Node *)args;
+  pthread_mutex_unlock(&((Node *)args)->nodeLock);
+  
   int err = 0;
   const pthread_t self_id = pthread_self();
   syslog(LOG_INFO, "Spawned thread ID: %ld\n", self_id);
 
-  /*Extract the needed information and free the arguments struct from heap*/
-  Node * info = (Node *)args;
+  char IPBuffer[50] = {0};
+  char logFile[50] = {0};
 
   pthread_mutex_lock(&info->nodeLock);
-
-  int accepted = info->connection_id;
-  char * IPBuffer = info->IPBuffer;
+  int accepted = info->connection_id; 
   info->thread_id = self_id;
-
+  
+  strcpy(IPBuffer, info->IPBuffer);
+  strcpy(logFile, info->logFile);
+  
   pthread_mutex_unlock(&info->nodeLock);
 
+
   /*Open the file for read/append, create if it doesn't exist*/
-  FILE *fp = fopen(writefile, "a+");
+  FILE *fp = fopen(logFile, "a+");
   if(!fp)
   {
     err = errno;
@@ -109,7 +167,8 @@ void * processRX(void * args)
     return 0;
   }
 
-
+  
+  
   /*Receive and write date*/
   while(!signal_exit)
   {
@@ -136,8 +195,11 @@ void * processRX(void * args)
     int written = 0;
     /*Lock the writefile mutex*/
     pthread_mutex_lock(&writefileLock);
+    
+    /*Add a timestamp*/
+    addTimestamp(fp);
+    
     /*Ensure entire buffer is written*/
-
     while((written = fwrite(rxbuffer, sizeof(char), rxcount, fp)) != to_write)
     {
       to_write -= written;
@@ -209,17 +271,7 @@ void * processRX(void * args)
   /*Close file pointer to writefile */
   fclose(fp);
 
-  /*Close the connection*/
-  shutdown(accepted, SHUT_RDWR);
-  if(close(accepted))
-  {
-    err = errno;
-    syslog(LOG_ERR, "Unable to close FD  %d, error: %s\n", accepted, strerror(err));
-    fprintf(stderr, "could not close FD %d, error: %s\n", accepted, strerror(err));
-  }
-  //else
-  //syslog(LOG_INFO, "Closed socket to from %s\n", IPBuffer);
-
+ 
   pthread_mutex_lock(&info->nodeLock);
   info->thread_complete = true;
   pthread_mutex_unlock(&info->nodeLock);
@@ -477,12 +529,19 @@ int main(int argc, char * argv[])
         syslog(LOG_ERR, "Malloc failed for newNode: %s\n", strerror(err));
         return -1;
       }
-      pthread_t newThread_id;
+      pthread_t newThread_id; 
+      pthread_mutex_init(&newNode->nodeLock, NULL);
+
+      pthread_mutex_lock(&newNode->nodeLock);
       newNode->next = NULL;
       newNode->thread_complete = false;
       newNode->connection_id = accepted;
       newNode->IPBuffer = inet_ntoa(client_addr.sin_addr);
-      pthread_mutex_init(&newNode->nodeLock, NULL);
+      pthread_mutex_unlock(&newNode->nodeLock);
+
+      strcpy(newNode->logFile, LOG_DIR);
+      strcat(newNode->logFile, newNode->IPBuffer);
+      syslog(LOG_INFO, "Log file: %s", newNode->logFile);
 
       /*Add new node to end of the list.
       *Since this is the only thead writing to the Linked list, only lock when updateing*/
@@ -517,6 +576,16 @@ int main(int argc, char * argv[])
       {
         /*Thread is complete, so it won't try to access the node anymore*/
         pthread_mutex_unlock(&traverse->nodeLock);
+	
+	
+  	/*Close the connection*/
+  	shutdown(traverse->connection_id, SHUT_RDWR);
+  	if(close(traverse->connection_id))
+  	{
+    		err = errno;
+    		syslog(LOG_ERR, "Unable to close FD  %d, error: %s\n", traverse->connection_id, strerror(err));
+    		fprintf(stderr, "could not close FD %d, error: %s\n", traverse->connection_id, strerror(err));
+  	}
 
         /*Join the completed thread*/
         pthread_join(traverse->thread_id, NULL);
@@ -594,7 +663,6 @@ int main(int argc, char * argv[])
 
         if(head->thread_complete == false)
         {
-          syslog(LOG_ERR, "Incomplete\n");
           int connection = head->connection_id;
 
           shutdown(connection, SHUT_RDWR);
@@ -606,11 +674,11 @@ int main(int argc, char * argv[])
             fprintf(stderr, "could not close FD %d, error: %s\n", connection, strerror(err));
           }
           else
-          syslog(LOG_INFO, "Closed connection from %s\n", head->IPBuffer);
+          	syslog(LOG_INFO, "Closed connection from %s\n", head->IPBuffer);
         }
-  syslog(LOG_ERR, "Complete\n");
+  	
 
-
+	
         Node * temp = head;
         head = head->next;
         free(temp);
@@ -633,15 +701,13 @@ int main(int argc, char * argv[])
 
       /*Free socket pointer*/
       freeaddrinfo(serverinfo);
+	
 
-      /*Delete /var/tmp/aesdsocketdata */
-      if(remove(writefile))
-      {
-        err = errno;
-        syslog(LOG_ERR, "Unable to remove %s, error: %s\n", writefile, strerror(err));
-      }
-      else
-      syslog(LOG_INFO, "Removed /var/tmp/aesdsocketdata");
+	/*Delete all logs*/
+	char deleteCmd[50] = "exec rm -r ";
+	strcat(deleteCmd, LOG_DIR);
+	strcat(deleteCmd, "*");
+	system(deleteCmd);
 
       return 0;
     }
