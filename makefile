@@ -8,7 +8,7 @@ ifeq ($(CFLAGS),)
 	CFLAGS = -g -Wall -Werror # error checking flags
 endif
 ifeq ($(LDFLAGS),)
-	LDFLAGS = -pthread -lrt
+	LDFLAGS = -pthread -lrt -lgcc_s
 endif
 
 TARGET = sensor
