@@ -11,16 +11,16 @@ ifeq ($(LDFLAGS),)
 	LDFLAGS = -pthread -lrt
 endif
 
-SRCS := $(wildcard *.c)	# set all files with .c extensions as SRCS
-BINS := $(SRCS:%.c=%) # set name of all output binaries with same name as .c files in SRCS
+TARGET = sensor
+OBJECTS = Dhruva/platform_testing/sensor.o
 
 all: sensor
-
 default: sensor
 
-sensor: sensor.o
+sensor: Dhruva/platform_testing/sensor.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 clean:
-	rm -rvf *.o ${BINS}	# recursively force remove all .o files and all binaries in BINS
+	-rm -rf *.o $(OBJECTS)
+	-rm -rf $(TARGET)
 
