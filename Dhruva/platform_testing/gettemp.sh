@@ -3,7 +3,7 @@
 # Author: Dhruva Koley
 
 string="temp=00.0'C"
-string=$(vgencmd "measure_temp")
+string=$(vcgencmd "measure_temp")
 # strip the front and the end of the string to isolate the temperature
 string2=${string#"temp="}
 string2=${string2%"'C"}

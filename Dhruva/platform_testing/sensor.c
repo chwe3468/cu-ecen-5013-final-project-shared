@@ -57,6 +57,7 @@ int main(void){
 		syslog(LOG_ERR, "sensor: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
 		exit(1);
 	}
+	printf("Daemonizing sensor\n");
 
 	// daemonize
     daemonize();
