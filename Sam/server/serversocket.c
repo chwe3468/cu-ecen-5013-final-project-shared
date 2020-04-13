@@ -33,7 +33,7 @@
 //#define TIMESTAMP 1
 
 //Path to log directory
-#define LOG_DIR "./logs/"
+#define LOG_DIR "/var/tmp/logs/"
 
 typedef struct node
 {
@@ -356,6 +356,12 @@ void * timestamp(union sigval sigev_val)
 int main(int argc, char * argv[])
 {
   syslog(LOG_INFO, "Starting mulithreaded socket server...\n");
+
+
+	/*Delete all logs*/
+	char createCmd[50] = "mkdir ";
+	strcat(createCmd, LOG_DIR);
+	system(createCmd);
 
   int err = 0;
 
