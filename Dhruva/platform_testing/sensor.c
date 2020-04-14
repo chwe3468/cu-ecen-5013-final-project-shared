@@ -96,28 +96,13 @@ int main(void){
 */
 static void timer_thread(union sigval sigval){
     thread_data_t *td = (thread_data_t*) sigval.sival_ptr;
-    int ret = 0;
 	syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
-		// set SIGCHLD to default behaviour to allow system() to use SIGCHLD
-		// if(signal(SIGCHLD, SIG_DFL) != SIG_IGN){
-		// 	syslog(LOG_ERR, "sensor: failed to switch SIGCHLD behaviour, errno: %d (%s)", errno, strerror(errno));
-		// 	perror("signal");
-		// }
 		// call shell script to get the temperature and log it to /var/tmp/log/log.txt
-		ret = system("/usr/bin/gettemp.sh");
-		if(WEXITSTATUS(ret)){
-			syslog(LOG_ERR, "sensor: failed to get sensor temp value, errno: %d (%s), exit status: %d", errno, strerror(errno), ret);
-			perror("system(getsensor.sh)");
-		}
+		system("/usr/bin/gettemp.sh");
 		syslog(LOG_INFO, "ran temperature script\n");
-		// restore SIGCHLD to ignore to prevent zombie processes
-		// if(signal(SIGCHLD, SIG_IGN) != SIG_DFL){
-		// 	syslog(LOG_ERR, "sensor: failed to restore SIGCHLD behaviour, errno: %d (%s)", errno, strerror(errno));
-		// 	perror("signal");
-		// }
     }
     if(pthread_mutex_unlock(&td->lock) != 0){
 		printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
