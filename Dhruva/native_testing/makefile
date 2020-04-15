@@ -18,7 +18,7 @@ all: sensor
 
 default: sensor
 
-writer: writer.o
+inotify_test: inotify_test.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 sensor: sensor.o
