@@ -39,7 +39,7 @@ struct PPMimage * readPPM(char * filename)
 		exit(1);
 	}
 
-	char buf[2]; //16;
+	char buf[16];
 	if(!fgets(buf, sizeof(buf), fp))
 	{
 		err = errno;
@@ -125,7 +125,7 @@ int main(int argc, char * argv[])
 
 	/*Setup logging*/
 	openlog(NULL, LOG_PID, LOG_USER);
-	syslog(LOG_INFO, "-----Beginning fb_test-----\n");
+	syslog(LOG_INFO, "-----Beginning fbwrite-----\n");
 	
 	char * filename = argv[1];
 	//usage: ./fb_test [file]
@@ -141,6 +141,7 @@ int main(int argc, char * argv[])
 	ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
 	vinfo.grayscale=0;
 	vinfo.bits_per_pixel=32;
+
 	ioctl(fb_fd, FBIOPUT_VSCREENINFO, &vinfo);
 	ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
 
@@ -175,6 +176,8 @@ int main(int argc, char * argv[])
 
 	free(image->data);
 	free(image);
+
+	close(fb_fd);
 
 	return 0;
 }
