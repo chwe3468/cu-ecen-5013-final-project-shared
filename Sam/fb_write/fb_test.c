@@ -30,6 +30,8 @@ int main()
 
 	ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo);
 
+
+	/*Calculate total size of the screen in bytes*/
 	long screensize = vinfo.yres_virtual * finfo.line_length;
 
 	uint8_t *fbp = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
@@ -40,7 +42,7 @@ int main()
 		for (y=0;y<vinfo.yres;y++)
 		{
 			long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
-			*((uint32_t*)(fbp + location)) = pixel_color(0xFF,0x00,0xFF, &vinfo);
+			*((uint32_t*)(fbp + location)) = pixel_color((uint8_t)x,0x00,0xFF, &vinfo);
 		}
 
 	return 0;
