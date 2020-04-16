@@ -17,13 +17,11 @@
 #include <time.h>
 #include <syslog.h>
 #include <errno.h>
-// 
-const char rfc_2822[] = "%a, %d %b %Y %T %z";
+
 
 typedef struct{
     pthread_mutex_t lock;
 } thread_data_t;
-
 
 static void timer_thread(union sigval sigval);
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time);
@@ -58,6 +56,7 @@ int main(void){
 		syslog(LOG_ERR, "sensor: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
 		exit(1);
 	}
+	printf("Set up handler\n");
 
 	// daemonize
     daemonize();
@@ -73,6 +72,7 @@ int main(void){
     }
 
 	setup_timer(clock_id, timerid, 5, &start_time);
+	syslog(LOG_INFO, "Set up timer\n");
 	int i = 0;
 	while(1){
 		if(sig_handler_exit){
@@ -81,7 +81,7 @@ int main(void){
 		}
 		i++;
 		// printf("%d\n", i);
-		for(int j = 0; j < 100000000; j++){
+		for(int j = 0; j < 150000000; j++){
 			;
 		}
 	}
@@ -96,27 +96,13 @@ int main(void){
 */
 static void timer_thread(union sigval sigval){
     thread_data_t *td = (thread_data_t*) sigval.sival_ptr;
-    int ret = 0;
-
+	syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
-		// set SIGCHLD to default behaviour to allow system() to use SIGCHLD
-		if(signal(SIGCHLD, SIG_DFL) != SIG_IGN){
-			syslog(LOG_ERR, "sensor: failed to switch SIGCHLD behaviour, errno: %d (%s)", errno, strerror(errno));
-			perror("signal");
-		}
 		// call shell script to get the temperature and log it to /var/tmp/log/log.txt
-		ret = system("/var/tmp/gettemp.sh");
-		if(WEXITSTATUS(ret)){
-			syslog(LOG_ERR, "sensor: failed to get sensor temp value, errno: %d (%s), exit status: %d", errno, strerror(errno), ret);
-			perror("system(getsensor.sh)");
-		}
-		// restore SIGCHLD to ignore to prevent zombie processes
-		if(signal(SIGCHLD, SIG_IGN) != SIG_DFL){
-			syslog(LOG_ERR, "sensor: failed to restore SIGCHLD behaviour, errno: %d (%s)", errno, strerror(errno));
-			perror("signal");
-		}
+		system("/home/dhruva/aesd/finalproject/cu-ecen-5013-final-project-shared/Dhruva/native_testing/gettemp.sh");
+		syslog(LOG_INFO, "ran temperature script\n");
     }
     if(pthread_mutex_unlock(&td->lock) != 0){
 		printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
