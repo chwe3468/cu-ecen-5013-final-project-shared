@@ -15,9 +15,9 @@
 #include <syslog.h>
 #include <string.h>
 struct PPMpixel{
-	unsigned char red;
-	unsigned char green;
-	unsigned char blue;
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
 };
 
 struct PPMimage{
@@ -39,7 +39,7 @@ struct PPMimage * readPPM(char * filename)
 		exit(1);
 	}
 
-	char buf[16];
+	char buf[2]; //16;
 	if(!fgets(buf, sizeof(buf), fp))
 	{
 		err = errno;
@@ -92,7 +92,7 @@ struct PPMimage * readPPM(char * filename)
          exit(1);
     }
 
-    while (fgetc(fp) != '\n') ;
+    while (fgetc(fp) != '\n');
     //memory allocation for pixel data
     img->data = (struct PPMpixel *)malloc(img->x * img->y * sizeof(struct PPMpixel));
 
