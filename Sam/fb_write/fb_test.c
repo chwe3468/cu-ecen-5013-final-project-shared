@@ -151,9 +151,15 @@ int main(int argc, char * argv[])
 	/*horizontal lines on screen x length of each line in bytes*/
 	long screensize = vinfo.yres_virtual * finfo.line_length;
 
+	printf("vinfo.yres_virtual &%d",vinfo.yres_virtual); 
+	printf("screensize = %d\n", screensize);
+
 	uint8_t *fbp = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
 	int x,y;
+
+	printf("vinfo.xres = %d\n", vinfo.xres);
+	printf("vinfo.yres = %d\n", vinfo.yres);
 
 	for (x=0;x<vinfo.xres;x++)
 	{
