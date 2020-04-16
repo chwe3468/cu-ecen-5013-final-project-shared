@@ -12,10 +12,10 @@ ifeq ($(LDFLAGS),)
 endif
 
 TARGET = sensor serversocket fb_write
-OBJECTS = Dhruva/platform_testing/sensor.o Sam/server/serversocket.o Sam/fb_test/fb_write.o
+OBJECTS = Dhruva/platform_testing/sensor.o Sam/server/serversocket.o Sam/fbwrite/fbwrite.o
 
-all: sensor serversocket fb_write
-default: sensor serversocket fb_write
+all: sensor serversocket fbwrite
+default: sensor serversocket fbwrite
 
 sensor: Dhruva/platform_testing/sensor.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
@@ -23,7 +23,7 @@ sensor: Dhruva/platform_testing/sensor.o
 serversocket: Sam/server/serversocket.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
-fb_write: Sam/fb_write/fb_test.o
+fbwrite: Sam/fbwrite/fbwrite.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 clean:
 	-rm -rf *.o $(OBJECTS)

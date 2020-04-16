@@ -109,7 +109,7 @@ struct PPMimage * readPPM(char * filename)
 
     fclose(fp);
 
-    printf("Done reading image");
+    printf("Done reading image\n");
     return img;
 
 
@@ -151,8 +151,8 @@ int main(int argc, char * argv[])
 	/*horizontal lines on screen x length of each line in bytes*/
 	long screensize = vinfo.yres_virtual * finfo.line_length;
 
-	printf("vinfo.yres_virtual &%d",vinfo.yres_virtual); 
-	printf("screensize = %d\n", screensize);
+	printf("vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
+	printf("screensize = %ld\n", screensize);
 
 	uint8_t *fbp = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
@@ -161,9 +161,9 @@ int main(int argc, char * argv[])
 	printf("vinfo.xres = %d\n", vinfo.xres);
 	printf("vinfo.yres = %d\n", vinfo.yres);
 
-	for (x=0;x<vinfo.xres;x++)
+	for (x=0;x<vinfo.xres/2;x++)
 	{
-		for (y=0;y<vinfo.yres;y++)
+		for (y=0;y<vinfo.yres/2;y++)
 		{
 
 			/*x + y*/
@@ -172,6 +172,9 @@ int main(int argc, char * argv[])
 			//*((uint32_t*)(fbp + location)) = pixel_color((uint8_t)x,0x00,0xFF, &vinfo);
 		}
 	}
+
+	free(image->data);
+	free(image);
 
 	return 0;
 }

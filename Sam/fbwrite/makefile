@@ -16,12 +16,13 @@ ifeq ($(LDFLAGS),)
 	LDFLAGS = -pthread -lrt -lgcc_s
 endif
 
-TARGET = fb_test
-OBJECTS = fb_test.o
+TARGET = fbwrite
+OBJECTS = fbwrite.o
 
-default: fb_test
+all: fbwrite
+default: fbwrite
 
-fb_test: fb_test.o
+fbwrite: fbwrite.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 
