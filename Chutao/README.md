@@ -9,10 +9,10 @@ dbv cap.jpeg
 '''
 </br>
 
-**AESD Server Application**
+**AESD Client Application**
 appending
 </br>
 
-**AESD Camera Server Application**
+**AESD Camera Client Application**
 appending
 </br>
