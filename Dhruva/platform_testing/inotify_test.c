@@ -33,7 +33,7 @@ timer_t timerid;
 thread_data_t td;
 bool sig_handler_exit = false;
 
-const char filename[] = "./log/log.txt";
+const char filename[] = "/var/tmp/log/log.txt";
 FILE *fd;
 static const long max_len = 5 + 1;
 char fbuff[8];
@@ -107,7 +107,7 @@ int main(void){
     if(timer_create(clock_id, &sev, &timerid) != 0 ){
         syslog(LOG_ERR, "inotify_test: %d, %s failed to create timer", errno, strerror(errno));
     }
-    // set timer for 4 second intervals
+    // set timer for 5 second intervals
     setup_timer(clock_id, timerid, 5, &start_time);
     syslog(LOG_INFO, "Set up timer\n");
 
