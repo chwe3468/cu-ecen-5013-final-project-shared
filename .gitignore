@@ -54,3 +54,4 @@ sensor
 
 # Application name
 capture
+inotify_test

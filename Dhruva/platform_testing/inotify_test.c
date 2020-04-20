@@ -26,7 +26,7 @@ typedef struct{
 static void timer_thread(union sigval sigval);
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time);
 static inline void timespec_add(struct timespec *result, const struct timespec *ts_1, const struct timespec *ts_2);
-// static void daemonize(void);
+static void daemonize(void);
 void sig_handler(int signo);
 
 timer_t timerid;
@@ -44,29 +44,21 @@ bool is_done = false;
 char * displayInotifyEvent(struct inotify_event *i){
     char *last_newline;
     char *last_line;
-    printf("    wd =%2d; ", i->wd);
-    if (i->cookie > 0)
-    printf("cookie =%4d; ", i->cookie);
-
-    printf("mask = ");
 
     if (i->mask & IN_CLOSE_WRITE){
-        printf("IN_CLOSE_WRITE\n");
+        syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
         if((fd = fopen(filename, "r")) != NULL){
             fseek(fd, -max_len, SEEK_END);
-            fread(fbuff, max_len-1, 1, fd);
+            fread(fbuff, (max_len - 1), 1, fd);
             fclose(fd);
 
             fbuff[max_len-1] = '\0';
             last_newline = strchr(fbuff, '\n');
-            last_line = last_newline+1;
+            last_line = last_newline + 1;
 
-            printf("captured: [%s]\n", last_line);
+            syslog(LOG_INFO, "captured: [%s]\n", last_line);
         }
     }
-
-    if (i->len > 0)
-    printf("        name = %s\n", i->name);
     return last_line;
 }
 
@@ -96,7 +88,10 @@ int main(void){
         syslog(LOG_ERR, "inotify_test: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
         exit(1);
     }
-    printf("Set up  for inotify\n");
+    printf("Set up for inotify\n");
+
+    // daemonize
+    daemonize();
 
     int clock_id = CLOCK_MONOTONIC;
     memset(&sev, 0, sizeof(struct sigevent));
@@ -121,12 +116,15 @@ int main(void){
         }
         i++;
         if(is_done){
-            printf("The temperature is %s 'C\n", sensorbuf);
+            syslog(LOG_INFO, "Getting the temperature\n", sensorbuf);
+            syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
+            // printf("The temperature is %s 'C\n", sensorbuf);
             is_done = false;
         }else{
             // printf("No fresh data\n");
         }
-        
+
+        printf("%d\n", i);
         for(int j = 0; j < 150000000; j++){
             ;
         }
@@ -148,7 +146,7 @@ static void timer_thread(union sigval sigval){
     char *p;
     struct inotify_event *event;
 
-    syslog(LOG_INFO, "In timer thread\n");
+    // syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
@@ -176,19 +174,17 @@ static void timer_thread(union sigval sigval){
             exit(-1);
         }
 
-        printf("Read %ld bytes from inotify fd\n", (long)numRead);
-
         /* Process all of the events in buffer returned by read() */
         for (p = buf; p < buf + numRead; ) {
             event = (struct inotify_event *) p;
             sensorbuf = displayInotifyEvent(event);
+            is_done = true;
+            syslog(LOG_INFO, "Thread done is: %d\n", is_done);
             p += sizeof(struct inotify_event) + event->len;
             if(sig_handler_exit){
                 break;
             }
         }
-
-        is_done = true;
 
     }
     if(pthread_mutex_unlock(&td->lock) != 0){
@@ -223,6 +219,35 @@ static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period
     return success;
 }
 
+// daemonize program
+static void daemonize(void){
+    pid_t pid;
+    // fork and exit parent if success
+    pid = fork();
+    if(pid < 0){
+        // Fork failed
+        exit(1);
+    }
+    if (pid > 0){
+        // Fork success
+        exit(0);
+    }
+    // create new session id for child
+    if(setsid() < 0){
+        exit(1);
+    }
+    // catch and ignore HUP and CHLD signals
+    signal(SIGCHLD, SIG_IGN);
+    signal(SIGHUP, SIG_IGN);
+    // change filemode mask
+    umask(0);
+    openlog("client-daemon", LOG_PID, LOG_DAEMON);
+    // change working dir to "/"
+    if((chdir("/")) < 0){
+        exit(1);
+    }
+    syslog(LOG_NOTICE, "client (inotify_test) daemonized");
+}
 
 /**
 * set @param result with @param ts_1 + @param ts_2
