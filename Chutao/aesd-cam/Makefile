@@ -1,8 +1,8 @@
 # Name: Makefile
 # Description: makefile for final project for ECEN 5013 AESD
-	
+
 ifeq ($(CC),)
-	CC = $(CROSS_COMPILE++
+	CC = $(CROSS_COMPILE)g++
 endif
 
 ifeq ($(LD),)
@@ -10,18 +10,15 @@ ifeq ($(LD),)
 endif
 
 ifeq ($(CFLAGS),)
-	CFLAGS = -g -Wall -Werror
+	CFLAGS = -O0 -g -Wall -Werror
 endif
 
 ifeq ($(LDFLAGS),)
-	LDFLAGS = 
+	LDFLAGS = -pthread -lrt
 endif
 
 
-CC=g++
 
-CFLAGS= -O0 -g 
-LIBS= -lrt
 CPPLIBS= -L/usr/lib -lopencv_core -lopencv_flann -lopencv_video
 
 HFILES= 
@@ -30,6 +27,8 @@ CPPFILES= capture.cpp
 
 SRCS= ${HFILES} ${CFILES}
 CPPOBJS= ${CPPFILES:.cpp=.o}
+
+
 
 all:	capture 
 
