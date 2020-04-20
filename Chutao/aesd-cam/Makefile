@@ -10,7 +10,7 @@ ifeq ($(LD),)
 endif
 
 ifeq ($(CFLAGS),)
-	CFLAGS = -O0 -g -Wall -Werror
+	CFLAGS = -O0 -g -Wall -Werror -lstdc++
 endif
 
 ifeq ($(LDFLAGS),)
@@ -19,7 +19,7 @@ endif
 
 
 
-CPPLIBS= -lopencv_core -lopencv_flann -lopencv_video
+CPPLIBS= -L/usr/lib -lopencv_core -lopencv_flann -lopencv_video
 
 HFILES= 
 CFILES= 
