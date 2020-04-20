@@ -19,7 +19,7 @@ endif
 
 
 
-CPPLIBS= -L/usr/lib -lopencv_core -lopencv_flann -lopencv_video
+CPPLIBS= -lopencv_core -lopencv_flann -lopencv_video
 
 HFILES= 
 CFILES= 
