@@ -62,7 +62,7 @@ int main( int argc, char** argv )
     printf("Start Capture and write\n");
     int retval = -1;
     retval = capture_write(dev);
-    if (error < 0)
+    if (retval < 0)
     {
         printf("error in capture_write function\n");
         return -1;
