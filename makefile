@@ -11,13 +11,16 @@ ifeq ($(LDFLAGS),)
 	LDFLAGS = -pthread -lrt
 endif
 
-TARGET = sensor serversocket fb_write
-OBJECTS = Dhruva/platform_testing/sensor.o Sam/server/serversocket.o Sam/fbwrite/fbwrite.o
+TARGET = sensor inotify_test serversocket fb_write
+OBJECTS = Dhruva/platform_testing/sensor.o Dhruva/platform_testing/inotify_test.o Sam/server/serversocket.o Sam/fbwrite/fbwrite.o
 
-all: sensor serversocket fbwrite
-default: sensor serversocket fbwrite
+all: sensor inotify_test serversocket fbwrite
+default: sensor inotify_test serversocket fbwrite
 
 sensor: Dhruva/platform_testing/sensor.o
+	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
+
+inotify_test: Dhruva/platform_testing/inotify_test.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 serversocket: Sam/server/serversocket.o
@@ -25,6 +28,7 @@ serversocket: Sam/server/serversocket.o
 
 fbwrite: Sam/fbwrite/fbwrite.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
+
 clean:
 	-rm -rf *.o $(OBJECTS)
 	-rm -rf $(TARGET)
