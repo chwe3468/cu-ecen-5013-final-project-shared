@@ -3,11 +3,11 @@
 case "$1" in
 	start)
 		echo "Starting client"
-		start-stop-daemon -S -n inotify_test -a /usr/bin/inotify_test
+		start-stop-daemon -S -n client1 -a /usr/bin/client1
 		;;
 	stop)
 		echo "Stopping client"
-		start-stop-daemon -K -n inotify_test
+		start-stop-daemon -K -n client1
 		;;
 	*)
 		echo "Usage: $0 {start|stop}"

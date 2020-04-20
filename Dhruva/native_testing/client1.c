@@ -29,21 +29,20 @@
 #define MAXDATASIZE 8192
 #define BACKLOG 100
 
+#define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX + 1))
+
 typedef struct{
     pthread_mutex_t lock;
 } thread_data_t;
-
-typedef struct{
-    int sock;
-    bool comp_flag;
-    pthread_mutex_t c_lock;
-} conn_params_t;
 
 static void timer_thread(union sigval sigval);
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time);
 static inline void timespec_add(struct timespec *result, const struct timespec *ts_1, const struct timespec *ts_2);
 static void daemonize(void);
 void sig_handler(int signo);
+void *get_in_addr(struct sockaddr *sa);
+char * displayInotifyEvent(struct inotify_event *i);
+int send_temperature(struct addrinfo *info);
 
 timer_t timerid;
 thread_data_t td;
@@ -56,15 +55,12 @@ char fbuff[8];
 char * sensorbuf;
 bool is_done = false;
 
-int sockfd, new_fd;
-int numbytes = 0;
-int seek = 0;
+int sockfd;
 char ip_addr[INET_ADDRSTRLEN];
 
 struct sockaddr_storage their_addr;
 socklen_t addr_len;
-conn_params_t conn_params;
-void *get_in_addr(struct sockaddr *sa);
+
 
 /* Display information from inotify_event structure */
 char * displayInotifyEvent(struct inotify_event *i){
@@ -90,13 +86,11 @@ char * displayInotifyEvent(struct inotify_event *i){
     return last_line;
 }
 
-#define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX + 1))
 
 
 int main(void){
-
     struct sigaction sa;
-    struct addrinfo hints, *servinfo, *p;
+    struct addrinfo hints, *servinfo;
     int rv;
 
     struct timespec start_time;
@@ -118,7 +112,7 @@ int main(void){
         syslog(LOG_ERR, "client1: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
         exit(1);
     }
-    printf("Set up for inotify\n");
+    printf("Set up handler for client1\n");
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -152,37 +146,15 @@ int main(void){
         if(sig_handler_exit){
             closelog();
             shutdown(sockfd, SHUT_WR);
+            freeaddrinfo(servinfo);
             exit(0);
         }
         i++;
         if(is_done){
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
             printf("The temperature is %s 'C\n", sensorbuf);
-            
-            for(p = servinfo; p != NULL; p = p->ai_next){
-                if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
-                    perror("client: socket");
-                    continue;
-            }
-
-            if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
-                close(sockfd);
-                perror("client: connect");
-                continue;
-            }
-            break;
-            }
-
-            if(p == NULL){
-                syslog(LOG_ERR, "client1: client failed to connect: %s", strerror(errno));
-                return 2;
-            }
-
-            inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
-            printf("client: connecting to %s\n", ip_addr);
-
-            if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
-                syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
+            if(send_temperature(servinfo) != 0){
+                syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
             is_done = false;
         }else{
@@ -347,3 +319,38 @@ void sig_handler(int signo){
     }
     errno = saved_errno;
 }
+
+/* connect ot server and send temperature data */
+int send_temperature(struct addrinfo *info){
+    struct addrinfo *p;
+    int ret = 0;
+
+    for(p = info; p != NULL; p = p->ai_next){
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+                perror("client: socket");
+                continue;
+        }
+
+        if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
+            close(sockfd);
+            perror("client: connect");
+            continue;
+        }
+        break;
+    }
+
+    if(p == NULL){
+        syslog(LOG_ERR, "client1: client failed to connect: %s", strerror(errno));
+        ret = 2;
+        return ret;
+    }
+
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
+    printf("client: connecting to %s\n", ip_addr);
+
+    if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
+        syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
+    }
+    return ret;
+}
+
