@@ -13,8 +13,7 @@ using namespace cv;
 
 int capture_write(int dev)
 {
-    VideoCapture cap;
-    cap(dev); // open the default camera
+    VideoCapture cap(dev); // open the default camera
     if(!cap.isOpened())  // check if we succeeded
         return -1;
 
