@@ -40,12 +40,12 @@ distclean:
 	-rm -f *.o *.d
 
 capture: capture.o
-	$(CC) $(LDFLAGS) $(CCFLAGS) -lstdc++ -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS) 
+	$(CC) $(LDFLAGS) $(CCFLAGS) -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS) 
 
 depend:
 
 .c.o:
-	$(CC) $(CCFLAGS) -lstdc++ -c $<
+	$(CC) $(CCFLAGS) -c $<
 
 .cpp.o:
-	$(CC) $(CCFLAGS) -lstdc++ -c $<
+	$(CC) $(CCFLAGS) -c $<
