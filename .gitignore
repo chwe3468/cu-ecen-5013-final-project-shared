@@ -54,4 +54,5 @@ sensor
 
 # Application name
 capture
-inotify_test
+client1
+fbwrite

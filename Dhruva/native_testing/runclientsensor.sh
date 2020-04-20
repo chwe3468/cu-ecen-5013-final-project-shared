@@ -8,5 +8,5 @@ LOGFILE="${LOGDIR}/log.txt"
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
 ./sensor
-./inotify_test
+./client1
 

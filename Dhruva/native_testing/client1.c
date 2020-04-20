@@ -19,9 +19,25 @@
 #include <time.h>
 #include <syslog.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
+#define PORT "9000"
+#define HOSTNAME "127.0.0.1"
+#define MAXDATASIZE 8192
+#define BACKLOG 100
+
 typedef struct{
     pthread_mutex_t lock;
 } thread_data_t;
+
+typedef struct{
+    int sock;
+    bool comp_flag;
+    pthread_mutex_t c_lock;
+} conn_params_t;
 
 static void timer_thread(union sigval sigval);
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time);
@@ -40,15 +56,20 @@ char fbuff[8];
 char * sensorbuf;
 bool is_done = false;
 
+int sockfd, new_fd;
+int numbytes = 0;
+int seek = 0;
+char ip_addr[INET_ADDRSTRLEN];
+
+struct sockaddr_storage their_addr;
+socklen_t addr_len;
+conn_params_t conn_params;
+void *get_in_addr(struct sockaddr *sa);
+
 /* Display information from inotify_event structure */
 char * displayInotifyEvent(struct inotify_event *i){
     char *last_newline;
     char *last_line;
-    // printf("    wd =%2d; ", i->wd);
-    // if (i->cookie > 0)
-    // printf("cookie =%4d; ", i->cookie);
-
-    // printf("mask = ");
 
     if (i->mask & IN_CLOSE_WRITE){
         syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
@@ -66,9 +87,6 @@ char * displayInotifyEvent(struct inotify_event *i){
             // printf("captured: [%s]\n", last_line);
         }
     }
-
-    // if (i->len > 0)
-    //     syslog(LOG_INFO, "        name = %s\n", i->name);
     return last_line;
 }
 
@@ -78,27 +96,38 @@ char * displayInotifyEvent(struct inotify_event *i){
 int main(void){
 
     struct sigaction sa;
+    struct addrinfo hints, *servinfo, *p;
+    int rv;
 
     struct timespec start_time;
     struct sigevent sev;
     memset(&td, 0, sizeof(thread_data_t));
 
     if(pthread_mutex_init(&td.lock, NULL) != 0){
-        syslog(LOG_ERR, "inotify_test: %d, %s failed initializing thread mutex", errno, strerror(errno));
+        syslog(LOG_ERR, "client1: %d, %s failed initializing thread mutex", errno, strerror(errno));
     }
 
     // set up signal handler for interrupts and termination
     sa.sa_handler = sig_handler;
     sa.sa_flags = SA_RESTART;
     if(sigaction(SIGINT, &sa, NULL) == -1){
-        syslog(LOG_ERR, "inotify_test: failed to set up sigaction SIGINT, errno: %s", strerror(errno));
+        syslog(LOG_ERR, "client1: failed to set up sigaction SIGINT, errno: %s", strerror(errno));
         exit(1);
     }
     if(sigaction(SIGTERM, &sa, NULL) == -1){
-        syslog(LOG_ERR, "inotify_test: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
+        syslog(LOG_ERR, "client1: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
         exit(1);
     }
     printf("Set up for inotify\n");
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if((rv = getaddrinfo(HOSTNAME, PORT, &hints, &servinfo)) != 0){
+        syslog(LOG_ERR, "client1: getaddrinfo: %s", gai_strerror(rv));
+        return 1;
+    }
 
     // daemonize
     daemonize();
@@ -110,24 +139,51 @@ int main(void){
     sev.sigev_value.sival_ptr = &td;
     sev.sigev_notify_function = timer_thread;
     if(timer_create(clock_id, &sev, &timerid) != 0 ){
-        syslog(LOG_ERR, "inotify_test: %d, %s failed to create timer", errno, strerror(errno));
+        syslog(LOG_ERR, "client1: %d, %s failed to create timer", errno, strerror(errno));
     }
     // set timer for 5 second intervals
     setup_timer(clock_id, timerid, 5, &start_time);
     syslog(LOG_INFO, "Set up timer\n");
 
-    // sensorbuf = NULL;
+    sensorbuf = NULL;
 
     int i = 0;
     while(1){
         if(sig_handler_exit){
             closelog();
+            shutdown(sockfd, SHUT_WR);
             exit(0);
         }
         i++;
         if(is_done){
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
             printf("The temperature is %s 'C\n", sensorbuf);
+            
+            for(p = servinfo; p != NULL; p = p->ai_next){
+                if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+                    perror("client: socket");
+                    continue;
+            }
+
+            if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
+                close(sockfd);
+                perror("client: connect");
+                continue;
+            }
+            break;
+            }
+
+            if(p == NULL){
+                syslog(LOG_ERR, "client1: client failed to connect: %s", strerror(errno));
+                return 2;
+            }
+
+            inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
+            printf("client: connecting to %s\n", ip_addr);
+
+            if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
+                syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
+            }
             is_done = false;
         }else{
             // printf("No fresh data\n");
@@ -255,7 +311,15 @@ static void daemonize(void){
     if((chdir("/")) < 0){
         exit(1);
     }
-    syslog(LOG_NOTICE, "client (inotify_test) daemonized");
+    syslog(LOG_NOTICE, "client (client1) daemonized");
+}
+
+// inspired by beej.us
+void *get_in_addr(struct sockaddr *sa){
+    if(sa->sa_family == AF_INET){
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
 /**

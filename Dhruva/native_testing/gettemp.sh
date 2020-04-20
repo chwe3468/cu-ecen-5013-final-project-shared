@@ -15,7 +15,7 @@ then
 	mkdir -p "${DIR}/${LOGDIR}"
 fi
 
-string="temp=00.0'C"
+string="temp=35.7'C"
 # string=$(vgencmd "measure_temp")
 # strip the front and the end of the string to isolate the temperature
 string2=${string#"temp="}

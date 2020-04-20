@@ -14,14 +14,17 @@ endif
 SRCS := $(wildcard *.c)	# set all files with .c extensions as SRCS
 BINS := $(SRCS:%.c=%) # set name of all output binaries with same name as .c files in SRCS
 
-all: sensor
+all: sensor client1 testserver
 
-default: sensor
+default: sensor client1
 
-inotify_test: inotify_test.o
+client1: client1.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 sensor: sensor.o
+	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
+
+testserver: testserver.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 clean:
