@@ -9,7 +9,7 @@ ifeq ($(LD),)
 	LD = ld  # Linker
 endif
 
-ifeq ($(CFLAGS),)
+ifeq ($(CCFLAGS),)
 	CCFLAGS = -O0 -g -Wall -Werror -lstdc++
 endif
 
@@ -40,12 +40,12 @@ distclean:
 	-rm -f *.o *.d
 
 capture: capture.o
-	$(CC) $(LDFLAGS) $(CCFLAGS) -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS)
+	$(CC) $(LDFLAGS) $(CCFLAGS) -lstdc++ -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS) 
 
 depend:
 
 .c.o:
-	$(CC) $(CCFLAGS) -c $<
+	$(CC) $(CCFLAGS) -lstdc++ -c $<
 
 .cpp.o:
-	$(CC) $(CCFLAGS) -c $<
+	$(CC) $(CCFLAGS) -lstdc++ -c $<
