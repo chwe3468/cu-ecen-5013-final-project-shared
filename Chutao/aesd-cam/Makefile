@@ -10,7 +10,7 @@ ifeq ($(LD),)
 endif
 
 ifeq ($(CFLAGS),)
-	CFLAGS = -O0 -g -Wall -Werror -lstdc++
+	CCFLAGS = -O0 -g -Wall -Werror -lstdc++
 endif
 
 ifeq ($(LDFLAGS),)
@@ -40,12 +40,12 @@ distclean:
 	-rm -f *.o *.d
 
 capture: capture.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS)
+	$(CC) $(LDFLAGS) $(CCFLAGS) -o $@ $@.o `pkg-config --libs opencv` $(CPPLIBS)
 
 depend:
 
 .c.o:
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CCFLAGS) -c $<
 
 .cpp.o:
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CCFLAGS) -c $<
