@@ -56,7 +56,7 @@ int main(void){
 		syslog(LOG_ERR, "sensor: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
 		exit(1);
 	}
-	printf("Set up handler\n");
+	printf("Set up sensor handler\n");
 
 	// daemonize
     daemonize();
@@ -96,7 +96,7 @@ int main(void){
 */
 static void timer_thread(union sigval sigval){
     thread_data_t *td = (thread_data_t*) sigval.sival_ptr;
-	syslog(LOG_INFO, "In timer thread\n");
+	// syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
@@ -186,7 +186,7 @@ static void daemonize(void){
 void sig_handler(int signo){
 	int saved_errno = errno;
 	if(signo == SIGINT || signo == SIGTERM){
-		syslog(LOG_DEBUG, "Caught signal, exiting\n");
+		syslog(LOG_DEBUG, "Caught signal, exiting sensor\n");
 		pthread_mutex_lock(&td.lock);
 		sig_handler_exit = true;
 		pthread_mutex_unlock(&td.lock);
