@@ -15,7 +15,10 @@ int capture_write(int dev)
 {
     VideoCapture cap(dev); // open the default camera
     if(!cap.isOpened())  // check if we succeeded
+    {
+        printf("Device is not opened\n");
         return -1;
+    }
 
     Mat frame;
     cap >> frame; // get a new frame from camera
@@ -49,7 +52,10 @@ int main( int argc, char** argv )
         exit(-1);
     }
 
-    capture_write(dev);
+    if (capture_write(dev)==-1)
+    {
+        return -1;
+    }
     // the camera will be deinitialized automatically in VideoCapture destructor
     return 0;
 }

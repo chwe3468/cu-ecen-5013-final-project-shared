@@ -51,3 +51,6 @@ Module.symvers
 Mkfile.old
 dkms.conf
 sensor
+
+# Application name
+capture
