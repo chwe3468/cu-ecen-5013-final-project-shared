@@ -189,6 +189,8 @@ void * processRX(void * args)
     {
       syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
+
+      syslog(LOG_INFO, "%s: bytes from %s", IPBuffer, rxbuffer);
     }
 
     int to_write = rxcount;
@@ -574,7 +576,7 @@ int main(int argc, char * argv[])
     Node * traverse = head;
     while(traverse != NULL)
     {
-      syslog(LOG_INFO, "Checking for done threads in main...\n");
+      //syslog(LOG_INFO, "Checking for done threads in main...\n");
 
       pthread_mutex_lock(&traverse->nodeLock);
       /*Join the completed thread*/
