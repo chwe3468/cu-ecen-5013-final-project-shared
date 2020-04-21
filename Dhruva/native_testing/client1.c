@@ -64,9 +64,8 @@ char * displayInotifyEvent(struct inotify_event *i){
     char *last_newline;
     char *last_line;
 
-    if (i->mask & IN_CLOSE_WRITE){
+    if(i->mask & IN_CLOSE_WRITE){
         // syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
-        // printf("IN_CLOSE_WRITE\n");
         if((fd = fopen(filename, "r")) != NULL){
             fseek(fd, -max_len, SEEK_END);
             fread(fbuff, max_len-1, 1, fd);
@@ -77,12 +76,10 @@ char * displayInotifyEvent(struct inotify_event *i){
             last_line = last_newline + 1;
 
             syslog(LOG_INFO, "captured: [%s]\n", last_line);
-            // printf("captured: [%s]\n", last_line);
         }
     }
     return last_line;
 }
-
 
 
 int main(void){

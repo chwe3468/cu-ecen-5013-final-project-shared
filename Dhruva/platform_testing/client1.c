@@ -25,6 +25,7 @@
 #include <arpa/inet.h>
 
 #define PORT "9000"
+// #define HOSTNAME "127.0.0.1"
 #define HOSTNAME "73.78.219.44"
 #define MAXDATASIZE 8192
 #define BACKLOG 100
@@ -56,17 +57,14 @@ char * sensorbuf;
 bool is_done = false;
 
 int sockfd;
-char ip_addr[INET_ADDRSTRLEN];
-
-struct sockaddr_storage their_addr;
-socklen_t addr_len;
+char ip_addr[INET6_ADDRSTRLEN];
 
 /* Display information from inotify_event structure */
 char * displayInotifyEvent(struct inotify_event *i){
     char *last_newline;
     char *last_line;
 
-    if (i->mask & IN_CLOSE_WRITE){
+    if(i->mask & IN_CLOSE_WRITE){
         syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
         if((fd = fopen(filename, "r")) != NULL){
             fseek(fd, -max_len, SEEK_END);
@@ -131,13 +129,12 @@ int main(void){
     if(timer_create(clock_id, &sev, &timerid) != 0 ){
         syslog(LOG_ERR, "client1: %d, %s failed to create timer", errno, strerror(errno));
     }
-    // set timer for 5 second intervals
-    setup_timer(clock_id, timerid, 5, &start_time);
+    // set timer for 6 second intervals
+    setup_timer(clock_id, timerid, 6, &start_time);
     syslog(LOG_INFO, "Set up inotify timer\n");
 
     sensorbuf = NULL;
 
-    int i = 0;
     while(1){
         if(sig_handler_exit){
             closelog();
@@ -145,21 +142,14 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
-        i++;
         if(is_done){
             syslog(LOG_INFO, "Getting the temperature\n");
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
             if(send_temperature(servinfo) != 0){
                 syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
+            close(sockfd);
             is_done = false;
-        }else{
-            // printf("No fresh data\n");
-        }
-
-        // printf("%d\n", i);
-        for(int j = 0; j < 150000000; j++){
-            ;
         }
     }
     return 0;
@@ -179,49 +169,52 @@ static void timer_thread(union sigval sigval){
     char *p;
     struct inotify_event *event;
 
-    // syslog(LOG_INFO, "In timer thread\n");
-    if(pthread_mutex_lock(&td->lock) != 0){
-        printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
-    } else {
-        inotifyFd = inotify_init();                 /* Create inotify instance */
-        if (inotifyFd == -1){
-            perror("inotify_init");
-            exit(-1);
-        }
-
-        /* add a watch for IN_CLOSE_WRITE events */
-        wd = inotify_add_watch(inotifyFd, filename, IN_CLOSE_WRITE);
-        if (wd == -1){
-            perror("inotify_add_watch");
-            exit(-1);
-        }
-        /* Read events forever */
-        numRead = read(inotifyFd, buf, BUF_LEN);
-        if (numRead == 0){
-            perror("read() from inotify fd returned 0!");
-            exit(-1);
-        }
-
-        if (numRead == -1){
-            perror("read");
-            exit(-1);
-        }
-
-        /* Process all of the events in buffer returned by read() */
-        for (p = buf; p < buf + numRead; ) {
-            event = (struct inotify_event *) p;
-            sensorbuf = displayInotifyEvent(event);
-            is_done = true;
-            syslog(LOG_INFO, "Thread done is: %d\n", is_done);
-            p += sizeof(struct inotify_event) + event->len;
-            if(sig_handler_exit){
-                break;
+    if(!sig_handler_exit){
+        syslog(LOG_INFO, "In timer inotify thread\n");
+        if(pthread_mutex_lock(&td->lock) != 0){
+            printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
+        } else {
+            inotifyFd = inotify_init();                 /* Create inotify instance */
+            if (inotifyFd == -1){
+                perror("inotify_init");
+                exit(-1);
             }
-        }
 
-    }
-    if(pthread_mutex_unlock(&td->lock) != 0){
-        printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
+            /* add a watch for IN_CLOSE_WRITE events */
+            wd = inotify_add_watch(inotifyFd, filename, IN_CLOSE_WRITE);
+            if (wd == -1){
+                perror("inotify_add_watch");
+                exit(-1);
+            }
+            /* Read events forever */
+            numRead = read(inotifyFd, buf, BUF_LEN);
+            if (numRead == 0){
+                perror("read() from inotify fd returned 0!");
+                exit(-1);
+            }
+
+            if (numRead == -1){
+                perror("read");
+                exit(-1);
+            }
+
+            syslog(LOG_INFO, "Read %ld bytes from inotify fd\n", (long)numRead);
+
+            /* Process all of the events in buffer returned by read() */
+            for (p = buf; p < buf + numRead; ) {
+                event = (struct inotify_event *) p;
+                sensorbuf = displayInotifyEvent(event);
+                p += sizeof(struct inotify_event) + event->len;
+                is_done = true;
+                if(sig_handler_exit){
+                    break;
+                }
+            }
+
+        }
+        if(pthread_mutex_unlock(&td->lock) != 0){
+            printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
+        }
     }
 }
 
@@ -320,6 +313,7 @@ void sig_handler(int signo){
 int send_temperature(struct addrinfo *info){
     struct addrinfo *p;
     int ret = 0;
+    int bytes_sent = 0;
 
     for(p = info; p != NULL; p = p->ai_next){
         if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
@@ -341,11 +335,14 @@ int send_temperature(struct addrinfo *info){
         return ret;
     }
 
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
     printf("client: connecting to %s\n", ip_addr);
 
-    if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
+    strcat(sensorbuf, "\n");
+    bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf), 0);
+    if(bytes_sent == -1){
         syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
     }
+    syslog(LOG_INFO, "client1: sent %d bytes", bytes_sent);
     return ret;
 }

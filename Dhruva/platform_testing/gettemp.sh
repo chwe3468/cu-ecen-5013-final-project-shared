@@ -10,7 +10,10 @@ then
 	# build log directory if it doesn't exist
 	cd "/var/tmp/"
 	mkdir -p "$LOGDIR"
+	touch "${LOGFILE}"
 fi
+
+touch "${LOGFILE}"
 
 string="temp=00.0'C"
 string=$(vcgencmd "measure_temp")
@@ -19,6 +22,6 @@ string2=${string#"temp="}
 string2=${string2%"'C"}
 
 echo $string2 >> "${LOGFILE}"
-echo $string2
+# echo $string2
 
 return 0

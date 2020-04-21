@@ -23,7 +23,8 @@ string="temp=40.5'C"
 # strip the front and the end of the string to isolate the temperature
 string2=${string#"temp="}
 string2=${string2%"'C"}
+
 echo $string2 >> "${DIR}${LOGFILE}"
-echo $string2
+# echo $string2
 return 0
 

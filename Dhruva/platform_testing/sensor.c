@@ -58,6 +58,8 @@ int main(void){
 	}
 	printf("Set up sensor handler\n");
 
+	system("/usr/bin/gettemp.sh");
+
 	// daemonize
     daemonize();
 
@@ -72,17 +74,12 @@ int main(void){
     }
 
 	setup_timer(clock_id, timerid, 5, &start_time);
-	syslog(LOG_INFO, "Set up timer\n");
-	int i = 0;
+	syslog(LOG_INFO, "Set up timer for sensor\n");
+
 	while(1){
 		if(sig_handler_exit){
 			closelog();
 			exit(0);
-		}
-		i++;
-		printf("%d\n", i);
-		for(int j = 0; j < 150000000; j++){
-			;
 		}
 	}
 	return 0;
