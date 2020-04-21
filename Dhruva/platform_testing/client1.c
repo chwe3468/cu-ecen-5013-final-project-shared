@@ -106,7 +106,7 @@ int main(void){
         syslog(LOG_ERR, "client1: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
         exit(1);
     }
-    printf("Set up handler for client1\n");
+    syslog(LOG_INFO, "Set up handler for client1\n");
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -134,7 +134,7 @@ int main(void){
     syslog(LOG_INFO, "Set up inotify timer\n");
 
     sensorbuf = NULL;
-
+    syslog(LOG_INFO, "Entering main loop\n");
     while(1){
         if(sig_handler_exit){
             closelog();
@@ -142,6 +142,7 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
+        printf("is_done is %d\n", is_done);
         if(is_done){
             syslog(LOG_INFO, "Getting the temperature\n");
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
@@ -172,7 +173,7 @@ static void timer_thread(union sigval sigval){
     if(!sig_handler_exit){
         syslog(LOG_INFO, "In timer inotify thread\n");
         if(pthread_mutex_lock(&td->lock) != 0){
-            printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
+            syslog(LOG_ERR, "Error %d (%s) locking thread data!\n", errno, strerror(errno));
         } else {
             inotifyFd = inotify_init();                 /* Create inotify instance */
             if (inotifyFd == -1){
@@ -206,6 +207,7 @@ static void timer_thread(union sigval sigval){
                 sensorbuf = displayInotifyEvent(event);
                 p += sizeof(struct inotify_event) + event->len;
                 is_done = true;
+                syslog(LOG_INFO, "Thread done is %d\n", is_done);
                 if(sig_handler_exit){
                     break;
                 }
@@ -213,7 +215,7 @@ static void timer_thread(union sigval sigval){
 
         }
         if(pthread_mutex_unlock(&td->lock) != 0){
-            printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
+            syslog(LOG_ERR, "Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
         }
     }
 }
@@ -229,7 +231,7 @@ static void timer_thread(union sigval sigval){
 static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period, struct timespec *start_time){
     bool success = false;
     if (clock_gettime(clock_id,start_time) != 0) {
-        printf("Error %d (%s) getting clock %d time\n", errno, strerror(errno), clock_id);
+        syslog(LOG_ERR, "Error %d (%s) getting clock %d time\n", errno, strerror(errno), clock_id);
     } else{
         struct itimerspec itimerspec;
         itimerspec.it_interval.tv_sec = timer_period;
@@ -237,7 +239,7 @@ static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period
         timespec_add(&itimerspec.it_value, start_time, &itimerspec.it_interval);
 
         if(timer_settime(timerid, TIMER_ABSTIME, &itimerspec, NULL ) != 0) {
-            printf("Error %d (%s) setting timer\n", errno, strerror(errno));
+            syslog(LOG_ERR, "Error %d (%s) setting timer\n", errno, strerror(errno));
         } else{
             success = true;
         }
@@ -336,7 +338,7 @@ int send_temperature(struct addrinfo *info){
     }
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
-    printf("client: connecting to %s\n", ip_addr);
+    syslog(LOG_INFO, "client: connecting to %s\n", ip_addr);
 
     strcat(sensorbuf, "\n");
     bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf), 0);
