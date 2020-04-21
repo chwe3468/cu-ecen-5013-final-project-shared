@@ -142,7 +142,9 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
-        printf("is_done is %d\n", is_done);
+        if(pthread_mutex_lock(&td.lock) != 0){
+            syslog(LOG_ERR, "Error %d (%s) locking thread data!\n", errno, strerror(errno));
+        }
         if(is_done){
             syslog(LOG_INFO, "Getting the temperature\n");
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
@@ -151,6 +153,9 @@ int main(void){
             }
             close(sockfd);
             is_done = false;
+        }
+        if(pthread_mutex_unlock(&td.lock) != 0){
+            syslog(LOG_ERR, "Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
         }
     }
     return 0;
