@@ -58,6 +58,8 @@ int main(void){
 	}
 	printf("Set up handler for sensor\n");
 
+	system("/home/dhruva/aesd/finalproject/cu-ecen-5013-final-project-shared/Dhruva/native_testing/gettemp.sh");
+
 	// daemonize
     daemonize();
 

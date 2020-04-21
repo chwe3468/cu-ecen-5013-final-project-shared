@@ -13,13 +13,17 @@ then
 	# build log directory if it doesn't exist
 	cd ${DIR}
 	mkdir -p "${DIR}/${LOGDIR}"
+	touch "${DIR}${LOGFILE}"
 fi
 
-string="temp=35.7'C"
+touch "${DIR}${LOGFILE}"
+
+string="temp=40.2'C"
 # string=$(vgencmd "measure_temp")
 # strip the front and the end of the string to isolate the temperature
 string2=${string#"temp="}
 string2=${string2%"'C"}
+string2=${string2}'\n'
 echo $string2 >> "${DIR}${LOGFILE}"
 echo $string2
 return 0

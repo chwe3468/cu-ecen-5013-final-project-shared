@@ -22,4 +22,3 @@ echo $string2 >> "${LOGFILE}"
 echo $string2
 
 return 0
-

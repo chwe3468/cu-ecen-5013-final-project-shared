@@ -56,7 +56,10 @@ char * sensorbuf;
 bool is_done = false;
 
 int sockfd;
-char ip_addr[INET6_ADDRSTRLEN];
+char ip_addr[INET_ADDRSTRLEN];
+
+struct sockaddr_storage their_addr;
+socklen_t addr_len;
 
 /* Display information from inotify_event structure */
 char * displayInotifyEvent(struct inotify_event *i){
@@ -64,7 +67,7 @@ char * displayInotifyEvent(struct inotify_event *i){
     char *last_line;
 
     if (i->mask & IN_CLOSE_WRITE){
-        // syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
+        syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
         if((fd = fopen(filename, "r")) != NULL){
             fseek(fd, -max_len, SEEK_END);
             fread(fbuff, (max_len - 1), 1, fd);
@@ -74,7 +77,7 @@ char * displayInotifyEvent(struct inotify_event *i){
             last_newline = strchr(fbuff, '\n');
             last_line = last_newline + 1;
 
-            syslog(LOG_INFO, "Captured: [%s] from log\n", last_line);
+            syslog(LOG_INFO, "captured: [%s]\n", last_line);
         }
     }
     return last_line;
@@ -134,7 +137,7 @@ int main(void){
 
     sensorbuf = NULL;
 
-    // int i = 0;
+    int i = 0;
     while(1){
         if(sig_handler_exit){
             closelog();
@@ -142,10 +145,10 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
-        // i++;
+        i++;
         if(is_done){
-            // syslog(LOG_INFO, "Getting the temperature\n");
-            syslog(LOG_INFO, "The temperature is %s'C\n", sensorbuf);
+            syslog(LOG_INFO, "Getting the temperature\n");
+            syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
             if(send_temperature(servinfo) != 0){
                 syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
@@ -155,9 +158,9 @@ int main(void){
         }
 
         // printf("%d\n", i);
-        // for(int j = 0; j < 150000000; j++){
-        //     ;
-        // }
+        for(int j = 0; j < 150000000; j++){
+            ;
+        }
     }
     return 0;
 }
@@ -195,7 +198,7 @@ static void timer_thread(union sigval sigval){
         /* Read events forever */
         numRead = read(inotifyFd, buf, BUF_LEN);
         if (numRead == 0){
-            perror("read() from inotify fd returned 0");
+            perror("read() from inotify fd returned 0!");
             exit(-1);
         }
 
@@ -209,7 +212,7 @@ static void timer_thread(union sigval sigval){
             event = (struct inotify_event *) p;
             sensorbuf = displayInotifyEvent(event);
             is_done = true;
-            // syslog(LOG_INFO, "Thread done is: %d\n", is_done);
+            syslog(LOG_INFO, "Thread done is: %d\n", is_done);
             p += sizeof(struct inotify_event) + event->len;
             if(sig_handler_exit){
                 break;
@@ -317,7 +320,6 @@ void sig_handler(int signo){
 int send_temperature(struct addrinfo *info){
     struct addrinfo *p;
     int ret = 0;
-    int bytes_sent = 0;
 
     for(p = info; p != NULL; p = p->ai_next){
         if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
@@ -340,12 +342,10 @@ int send_temperature(struct addrinfo *info){
     }
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
-    syslog(LOG_INFO, "client: connecting to %s\n", ip_addr);
+    printf("client: connecting to %s\n", ip_addr);
 
-    bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf) + 1, 0);
-    if(bytes_sent == -1){
+    if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
         syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
     }
-    syslog(LOG_INFO, "client1: sent %d bytes", bytes_sent);
     return ret;
 }

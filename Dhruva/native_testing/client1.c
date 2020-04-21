@@ -26,6 +26,7 @@
 
 #define PORT "9000"
 #define HOSTNAME "127.0.0.1"
+// #define HOSTNAME "73.78.219.44"
 #define MAXDATASIZE 8192
 #define BACKLOG 100
 
@@ -50,7 +51,7 @@ bool sig_handler_exit = false;
 
 const char filename[] = "/home/dhruva/aesd/finalproject/cu-ecen-5013-final-project-shared/Dhruva/native_testing/log/log.txt";
 FILE *fd;
-static const long max_len = 5 + 1;
+static const long max_len = 6 + 1;
 char fbuff[8];
 char * sensorbuf;
 bool is_done = false;
@@ -152,6 +153,7 @@ int main(void){
             if(send_temperature(servinfo) != 0){
                 syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
+            close(sockfd);
             is_done = false;
         }
         
@@ -343,7 +345,7 @@ int send_temperature(struct addrinfo *info){
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
     printf("client: connecting to %s\n", ip_addr);
 
-    bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf)+1, 0);
+    bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf) + 1, 0);
     if(bytes_sent == -1){
         syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
     }
