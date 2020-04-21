@@ -56,7 +56,7 @@ int main(void){
 		syslog(LOG_ERR, "sensor: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
 		exit(1);
 	}
-	printf("Set up handler\n");
+	printf("Set up handler for sensor\n");
 
 	// daemonize
     daemonize();
@@ -72,17 +72,12 @@ int main(void){
     }
 
 	setup_timer(clock_id, timerid, 5, &start_time);
-	syslog(LOG_INFO, "Set up timer\n");
-	int i = 0;
+	syslog(LOG_INFO, "Set up timer for sensor\n");
+	
 	while(1){
 		if(sig_handler_exit){
 			closelog();
 			exit(0);
-		}
-		i++;
-		// printf("%d\n", i);
-		for(int j = 0; j < 150000000; j++){
-			;
 		}
 	}
 	return 0;
@@ -96,13 +91,13 @@ int main(void){
 */
 static void timer_thread(union sigval sigval){
     thread_data_t *td = (thread_data_t*) sigval.sival_ptr;
-	syslog(LOG_INFO, "In timer thread\n");
+	// syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
 		// call shell script to get the temperature and log it to /var/tmp/log/log.txt
 		system("/home/dhruva/aesd/finalproject/cu-ecen-5013-final-project-shared/Dhruva/native_testing/gettemp.sh");
-		syslog(LOG_INFO, "ran temperature script\n");
+		syslog(LOG_INFO, "Ran temperature script\n");
     }
     if(pthread_mutex_unlock(&td->lock) != 0){
 		printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
@@ -186,7 +181,7 @@ static void daemonize(void){
 void sig_handler(int signo){
 	int saved_errno = errno;
 	if(signo == SIGINT || signo == SIGTERM){
-		syslog(LOG_DEBUG, "Caught signal, exiting\n");
+		syslog(LOG_DEBUG, "Caught signal, exiting sensor\n");
 		pthread_mutex_lock(&td.lock);
 		sig_handler_exit = true;
 		pthread_mutex_unlock(&td.lock);

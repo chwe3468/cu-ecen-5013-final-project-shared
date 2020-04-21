@@ -56,7 +56,7 @@ int main(void){
 		syslog(LOG_ERR, "sensor: failed to set up sigaction SIGTERM, errno: %s", strerror(errno));
 		exit(1);
 	}
-	printf("Set up sensor handler\n");
+	printf("Set up handler for sensor\n");
 
 	// daemonize
     daemonize();
@@ -72,18 +72,18 @@ int main(void){
     }
 
 	setup_timer(clock_id, timerid, 5, &start_time);
-	syslog(LOG_INFO, "Set up timer\n");
+	syslog(LOG_INFO, "Set up timer for sensor\n");
 	int i = 0;
 	while(1){
 		if(sig_handler_exit){
 			closelog();
 			exit(0);
 		}
-		i++;
-		printf("%d\n", i);
-		for(int j = 0; j < 150000000; j++){
-			;
-		}
+		// i++;
+		// printf("%d\n", i);
+		// for(int j = 0; j < 150000000; j++){
+		// 	;
+		// }
 	}
 	return 0;
 }
@@ -102,7 +102,7 @@ static void timer_thread(union sigval sigval){
     } else {
 		// call shell script to get the temperature and log it to /var/tmp/log/log.txt
 		system("/usr/bin/gettemp.sh");
-		syslog(LOG_INFO, "ran temperature script\n");
+		syslog(LOG_INFO, "Ran temperature script\n");
     }
     if(pthread_mutex_unlock(&td->lock) != 0){
 		printf("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));

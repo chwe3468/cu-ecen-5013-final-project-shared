@@ -56,11 +56,7 @@ char * sensorbuf;
 bool is_done = false;
 
 int sockfd;
-char ip_addr[INET_ADDRSTRLEN];
-
-struct sockaddr_storage their_addr;
-socklen_t addr_len;
-
+char ip_addr[INET6_ADDRSTRLEN];
 
 /* Display information from inotify_event structure */
 char * displayInotifyEvent(struct inotify_event *i){
@@ -68,7 +64,7 @@ char * displayInotifyEvent(struct inotify_event *i){
     char *last_line;
 
     if (i->mask & IN_CLOSE_WRITE){
-        syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
+        // syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
         // printf("IN_CLOSE_WRITE\n");
         if((fd = fopen(filename, "r")) != NULL){
             fseek(fd, -max_len, SEEK_END);
@@ -137,11 +133,11 @@ int main(void){
     }
     // set timer for 5 second intervals
     setup_timer(clock_id, timerid, 5, &start_time);
-    syslog(LOG_INFO, "Set up timer\n");
+    syslog(LOG_INFO, "Set up inotify timer\n");
 
     sensorbuf = NULL;
 
-    int i = 0;
+    // int i = 0;
     while(1){
         if(sig_handler_exit){
             closelog();
@@ -149,7 +145,7 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
-        i++;
+        // i++;
         if(is_done){
             syslog(LOG_INFO, "The temperature is %s 'C\n", sensorbuf);
             printf("The temperature is %s 'C\n", sensorbuf);
@@ -157,13 +153,11 @@ int main(void){
                 syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
             is_done = false;
-        }else{
-            // printf("No fresh data\n");
         }
         
-        for(int j = 0; j < 150000000; j++){
-            ;
-        }
+        // for(int j = 0; j < 150000000; j++){
+        //     ;
+        // }
     }
     return 0;
 }
@@ -182,7 +176,7 @@ static void timer_thread(union sigval sigval){
     char *p;
     struct inotify_event *event;
 
-    syslog(LOG_INFO, "In timer thread\n");
+    // syslog(LOG_INFO, "In timer thread\n");
     if(pthread_mutex_lock(&td->lock) != 0){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
@@ -201,7 +195,7 @@ static void timer_thread(union sigval sigval){
         /* Read events forever */
         numRead = read(inotifyFd, buf, BUF_LEN);
         if (numRead == 0){
-            perror("read() from inotify fd returned 0!");
+            perror("read() from inotify fd returned 0");
             exit(-1);
         }
 
@@ -283,7 +277,7 @@ static void daemonize(void){
     if((chdir("/")) < 0){
         exit(1);
     }
-    syslog(LOG_NOTICE, "client (client1) daemonized");
+    syslog(LOG_NOTICE, "client daemonized");
 }
 
 // inspired by beej.us
@@ -324,6 +318,7 @@ void sig_handler(int signo){
 int send_temperature(struct addrinfo *info){
     struct addrinfo *p;
     int ret = 0;
+    int bytes_sent = 0;
 
     for(p = info; p != NULL; p = p->ai_next){
         if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
@@ -345,12 +340,14 @@ int send_temperature(struct addrinfo *info){
         return ret;
     }
 
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)&p->ai_addr), ip_addr, sizeof(ip_addr));
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
     printf("client: connecting to %s\n", ip_addr);
 
-    if(send(sockfd, sensorbuf, strlen(sensorbuf), 0) == -1){
+    bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf)+1, 0);
+    if(bytes_sent == -1){
         syslog(LOG_ERR, "client1: %d, %s failed to send", errno, strerror(errno));
     }
+    syslog(LOG_INFO, "client1: sent %d bytes", bytes_sent);
     return ret;
 }
 
