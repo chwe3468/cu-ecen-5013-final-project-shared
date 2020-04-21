@@ -190,7 +190,9 @@ void * processRX(void * args)
       syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
 
-      syslog(LOG_INFO, "%s: bytes from %s", IPBuffer, rxbuffer);
+      //syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
+      //syslog(LOG_INFO, "%s: size: %ld", IPBuffer, strlen(rxbuffer));
+    
     }
 
     int to_write = rxcount;
@@ -202,10 +204,11 @@ void * processRX(void * args)
     addTimestamp(fp);
     
     /*Ensure entire buffer is written*/
-    while((written = fwrite(rxbuffer, sizeof(char), rxcount, fp)) != to_write)
+    while((written = fwrite((char *)rxbuffer, sizeof(char), rxcount, fp)) != to_write)
     {
+      //syslog(LOG_INFO, "wrote %d bytes", written); 
       to_write -= written;
-      if(written == EOF)
+     if(written == EOF)
       {
         pthread_mutex_unlock(&writefileLock);
         err = errno;
@@ -214,6 +217,8 @@ void * processRX(void * args)
         break;
       }
     }
+
+    //syslog(LOG_INFO, "wrote %d bytes", written); 
     pthread_mutex_unlock(&writefileLock);
 
     /*Parse the rxbuffer for newline character*/
