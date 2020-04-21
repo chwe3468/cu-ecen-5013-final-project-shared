@@ -18,12 +18,11 @@ fi
 
 touch "${DIR}${LOGFILE}"
 
-string="temp=40.2'C"
+string="temp=40.5'C"
 # string=$(vgencmd "measure_temp")
 # strip the front and the end of the string to isolate the temperature
 string2=${string#"temp="}
 string2=${string2%"'C"}
-string2=${string2}'\n'
 echo $string2 >> "${DIR}${LOGFILE}"
 echo $string2
 return 0

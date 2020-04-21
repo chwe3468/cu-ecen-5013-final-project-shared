@@ -8,13 +8,13 @@ ifeq ($(CFLAGS),)
 	CFLAGS = -g -Wall -Werror # error checking flags
 endif
 ifeq ($(LDFLAGS),)
-	LDFLAGS = -pthread -lrt
+	LDFLAGS = -pthread -lrt -lgcc_s
 endif
 
 SRCS := $(wildcard *.c)	# set all files with .c extensions as SRCS
 BINS := $(SRCS:%.c=%) # set name of all output binaries with same name as .c files in SRCS
 
-all: sensor client1 testserver
+all: sensor client1 serversocket
 
 default: sensor client1
 
@@ -24,7 +24,7 @@ client1: client1.o
 sensor: sensor.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
-testserver: testserver.o
+serversocket: serversocket.o
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
 
 clean:
