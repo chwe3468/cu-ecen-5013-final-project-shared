@@ -158,8 +158,9 @@ int main(int argc, char * argv[])
 	long screensize = vinfo.yres_virtual * finfo.line_length;
 
 
-	//syslog(LOG_INFO, "vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
-	//syslog(LOG_INFO, "screensize = %ld\n", screensize);
+	syslog(LOG_INFO, "vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
+	syslog(LOG_INFO, "finfo.linelength %d\n",finfo.line_length); 
+	syslog(LOG_INFO, "screensize = %ld\n", screensize);
 
 	uint8_t *fbp = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
@@ -168,15 +169,21 @@ int main(int argc, char * argv[])
 	syslog(LOG_INFO, "vinfo.xres = %d\n", vinfo.xres);
 	syslog(LOG_INFO, "vinfo.yres = %d\n", vinfo.yres);
 
-	for (x=0;x<vinfo.xres/2;x++)
+	syslog(LOG_INFO, "vinfo.yoffset = %d\n", vinfo.yoffset);
+	syslog(LOG_INFO, "vinfo.xoffset = %d\n", vinfo.xoffset);
+
+	for (x=0;x<vinfo.xres;x++)
 	{
-		for (y=0;y<vinfo.yres/2;y++)
+		for (y=0;y<vinfo.yres;y++)
 		{
 
 			/*x + y*/
-			long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
+			long location = x+vinfo.xoffset
+			//long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
 			*((uint32_t*)(fbp + location)) = pixel_color(image->data[location].red,image->data[location].green,image->data[location].blue, &vinfo);
 			//*((uint32_t*)(fbp + location)) = pixel_color((uint8_t)x,0x00,0xFF, &vinfo);
+
+			syslog(LOG_INFO, "x: %d, y: %d, loc: %d", x, y, location);
 		}
 	}
 
