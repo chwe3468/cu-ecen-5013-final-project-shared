@@ -21,19 +21,22 @@ int capture_write(int dev)
     }
 
     Mat frame;
-    printf("Start Capture\n");
+    Mat frame_resized;
     cap >> frame; // get a new frame from camera
 
-    printf("Start write image to file\n");
+
     bool retval = false; 
-    retval = imwrite("./cap.png", frame);// save image to file
+    // resize image down to 320x240
+    resize(frame, frame_resized, Size(320,240), 0.5, 0.5,interpolation = INTER_LINEAR);
+    
+    // write image to file
+    retval = imwrite("./cap.ppm", frame_resized);// save image to file
     if (retval == false)
     {
         printf("Save image failed\n");
         return -1;
     }
-    printf("Image saved\n");
-
+    printf("Resized image saved \n");
     // the camera will be deinitialized automatically in VideoCapture destructor
     return 0;
 }
@@ -45,7 +48,7 @@ int main( int argc, char** argv )
 
     if(argc > 1)
     {
-        // use /dev/video<# >
+        // use /dev/video<#>
         sscanf(argv[1], "%d", &dev);
         printf("using %s\n", argv[1]);
     }
