@@ -27,7 +27,7 @@ int capture_write(int dev)
 
     bool retval = false; 
     // resize image down to 320x240
-    resize(frame, frame_resized, Size(320,240), 0.5, 0.5,interpolation = INTER_LINEAR);
+    resize(frame, frame_resized, Size(320,240), 0.5, 0.5,INTER_LINEAR);
     
     // write image to file
     retval = imwrite("./cap.ppm", frame_resized);// save image to file
