@@ -316,7 +316,7 @@ void sig_handler(int signo){
     errno = saved_errno;
 }
 
-/* connect ot server and send temperature data */
+/* connect to server and send temperature data */
 int send_temperature(struct addrinfo *info){
     struct addrinfo *p;
     int ret = 0;

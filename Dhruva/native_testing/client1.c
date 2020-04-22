@@ -84,7 +84,7 @@ char * displayInotifyEvent(struct inotify_event *i){
 
 int main(void){
     struct sigaction sa;
-    struct addrinfo hints, *servinfo;
+    struct addrinfo hints, *servinfo, *p;
     int rv;
 
     struct timespec start_time;
@@ -135,6 +135,29 @@ int main(void){
 
     sensorbuf = NULL;
 
+    for(p = servinfo; p != NULL; p = p->ai_next){
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+                perror("client: socket");
+                continue;
+        }
+
+        if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
+            close(sockfd);
+            perror("client: connect");
+            continue;
+        }
+        break;
+    }
+
+    if(p == NULL){
+        syslog(LOG_ERR, "client1: client failed to connect: %s", strerror(errno));
+        // ret = 2;
+        return 2;
+    }
+
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
+    printf("client: connecting to %s\n", ip_addr);
+
     while(1){
         if(sig_handler_exit){
             closelog();
@@ -142,14 +165,20 @@ int main(void){
             freeaddrinfo(servinfo);
             exit(0);
         }
+        if(pthread_mutex_lock(&td.lock) != 0){
+            syslog(LOG_ERR, "Error %d (%s) locking thread data!\n", errno, strerror(errno));
+        }
         if(is_done){
             syslog(LOG_INFO, "The temperature is %s'C\n", sensorbuf);
             printf("The temperature is %s'C\n", sensorbuf);
             if(send_temperature(servinfo) != 0){
                 syslog(LOG_ERR, "client1: %d, %s failed to send temperature to server", errno, strerror(errno));
             }
-            close(sockfd);
+            // close(sockfd);
             is_done = false;
+        }
+        if(pthread_mutex_unlock(&td.lock) != 0){
+            syslog(LOG_ERR, "Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
         }
     }
     return 0;
@@ -311,32 +340,11 @@ void sig_handler(int signo){
 
 /* connect to server and send temperature data */
 int send_temperature(struct addrinfo *info){
-    struct addrinfo *p;
+    // struct addrinfo *p;
     int ret = 0;
     int bytes_sent = 0;
 
-    for(p = info; p != NULL; p = p->ai_next){
-        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
-                perror("client: socket");
-                continue;
-        }
 
-        if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
-            close(sockfd);
-            perror("client: connect");
-            continue;
-        }
-        break;
-    }
-
-    if(p == NULL){
-        syslog(LOG_ERR, "client1: client failed to connect: %s", strerror(errno));
-        ret = 2;
-        return ret;
-    }
-
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
-    printf("client: connecting to %s\n", ip_addr);
 
     strcat(sensorbuf, "\n");
     bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf), 0);
