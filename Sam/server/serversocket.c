@@ -190,7 +190,7 @@ void * processRX(void * args)
       syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
 
-      //syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
+      syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
       //syslog(LOG_INFO, "%s: size: %ld", IPBuffer, strlen(rxbuffer));
     
     }
@@ -218,7 +218,7 @@ void * processRX(void * args)
       }
     }
 
-    //syslog(LOG_INFO, "wrote %d bytes", written); 
+    syslog(LOG_INFO, "wrote %d bytes", written); 
     pthread_mutex_unlock(&writefileLock);
 
     /*Parse the rxbuffer for newline character*/

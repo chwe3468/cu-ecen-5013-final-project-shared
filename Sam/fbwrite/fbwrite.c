@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
+#include <unistd.h>
 struct PPMpixel{
 	uint8_t red;
 	uint8_t green;
@@ -47,12 +48,13 @@ struct PPMimage * readPPM(char * filename)
 		syslog(LOG_ERR, "Could not fget from file %s, errno: %s", filename, strerror(err));
 		exit(1);
 	}
+	syslog(LOG_INFO, "buf = %s", buf);
 
-	if(buf[0] != 'P' || buf[1] != '6')
-	{
-		syslog(LOG_ERR, "Image format must be P6");
-		exit(1);
-	}
+//	if(buf[0] != 'P' || buf[1] != '6')
+//	{
+//		syslog(LOG_ERR, "Image format must be P6");
+//		exit(1);
+//	}
 
 
 	struct PPMimage * img = (struct PPMimage *)malloc(sizeof(struct PPMimage));
@@ -64,13 +66,14 @@ struct PPMimage * readPPM(char * filename)
 	}
 
 	//check for comments
-    	int c = getc(fp);
+    	/*int c = getc(fp);
     	while (c == '#') 
 	{
     		while (getc(fp) != '\n') ;
          	c = getc(fp);
     	}
     	ungetc(c, fp);
+	*/
     
 	//read image size information
     	if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) 
@@ -78,6 +81,7 @@ struct PPMimage * readPPM(char * filename)
 		syslog(LOG_ERR, "Invalid image size (error loading '%s')\n", filename);
          	exit(1);
     	}
+	syslog(LOG_INFO, "x: %d y: %d",  img->x, img->y);
 
     	//read rgb component
 	int rgb_comp_color;
@@ -85,6 +89,7 @@ struct PPMimage * readPPM(char * filename)
          	syslog(LOG_ERR, "Invalid rgb component (error loading '%s')\n", filename);
          	exit(1);
     	}
+	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp_color);
 
     //check rgb component depth
     if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
@@ -109,7 +114,7 @@ struct PPMimage * readPPM(char * filename)
 
     fclose(fp);
 
-    printf("Done reading image\n");
+    syslog(LOG_INFO, "Done reading image\n");
     return img;
 
 
@@ -152,15 +157,16 @@ int main(int argc, char * argv[])
 	/*horizontal lines on screen x length of each line in bytes*/
 	long screensize = vinfo.yres_virtual * finfo.line_length;
 
-	printf("vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
-	printf("screensize = %ld\n", screensize);
+
+	//syslog(LOG_INFO, "vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
+	//syslog(LOG_INFO, "screensize = %ld\n", screensize);
 
 	uint8_t *fbp = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
 	int x,y;
 
-	printf("vinfo.xres = %d\n", vinfo.xres);
-	printf("vinfo.yres = %d\n", vinfo.yres);
+	syslog(LOG_INFO, "vinfo.xres = %d\n", vinfo.xres);
+	syslog(LOG_INFO, "vinfo.yres = %d\n", vinfo.yres);
 
 	for (x=0;x<vinfo.xres/2;x++)
 	{
