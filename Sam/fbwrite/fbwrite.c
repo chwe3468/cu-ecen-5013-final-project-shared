@@ -177,13 +177,12 @@ int main(int argc, char * argv[])
 		for (y=0;y<vinfo.yres;y++)
 		{
 
-			/*x + y*/
-			
+			/*x + y*/	
 			long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
-			*((uint32_t*)(fbp + location)) = pixel_color(image->data[location].red,image->data[location].green,image->data[location].blue, &vinfo);
+			int pixel = x + y*xres;
+			*((uint32_t*)(fbp + location)) = pixel_color(image->data[pixel].red,image->data[pixel].green,image->data[pixel].blue, &vinfo);
 			//*((uint32_t*)(fbp + location)) = pixel_color((uint8_t)x,0x00,0xFF, &vinfo);
-
-			syslog(LOG_INFO, "x: %d, y: %d, loc: %d", x, y, location);
+			//syslog(LOG_INFO, "x: %d, y: %d, loc: %d", x, y, location);
 		}
 	}
 
