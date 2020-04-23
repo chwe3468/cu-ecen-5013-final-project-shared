@@ -107,7 +107,7 @@ void addTimestamp(FILE * fp)
 
 
 	char timestamp[80] = {0};
-	strftime(timestamp, sizeof(timestamp),"%a, %d %b %Y %T %z: ", curr);
+	strftime(timestamp, sizeof(timestamp),"%d %b %Y %T: ", curr);
 
 	int written;
   	int to_write = strlen(timestamp);

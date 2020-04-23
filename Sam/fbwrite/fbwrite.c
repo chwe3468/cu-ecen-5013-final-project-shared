@@ -15,6 +15,8 @@
 #include <syslog.h>
 #include <string.h>
 #include <unistd.h>
+
+
 struct PPMpixel{
 	uint8_t red;
 	uint8_t green;
@@ -26,12 +28,17 @@ struct PPMimage{
  	struct PPMpixel * data;
 };
 
+
+#define RES 76800	
+struct PPMpixel pixArr[RES];
+
 #define RGB_COMPONENT_COLOR 255
 struct PPMimage * readPPM(char * filename)
 {
 	int err = 0;
 	
 	FILE *fp = fopen(filename, "r");
+	FILE *t = fopen("testppm.ppm", "a+");
 	if(!fp)
 	{
 		err = errno;
@@ -41,7 +48,8 @@ struct PPMimage * readPPM(char * filename)
 	}
 
 	char buf[16];
-	if(!fgets(buf, sizeof(buf), fp))
+	/*fgets teminates at newline*/
+	if(!fgets(buf, sizeof(buf), fp)) //P6
 	{
 		err = errno;
 		perror("Could not open PPM file");
@@ -49,6 +57,8 @@ struct PPMimage * readPPM(char * filename)
 		exit(1);
 	}
 	syslog(LOG_INFO, "buf = %s", buf);
+
+	fputs(buf,t);
 
 //	if(buf[0] != 'P' || buf[1] != '6')
 //	{
@@ -65,17 +75,8 @@ struct PPMimage * readPPM(char * filename)
 		exit(1);
 	}
 
-	//check for comments
-    	/*int c = getc(fp);
-    	while (c == '#') 
-	{
-    		while (getc(fp) != '\n') ;
-         	c = getc(fp);
-    	}
-    	ungetc(c, fp);
-	*/
-    
-	//read image size information
+	    
+	/*Get the image resolution*/
     	if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) 
 	{
 		syslog(LOG_ERR, "Invalid image size (error loading '%s')\n", filename);
@@ -90,34 +91,46 @@ struct PPMimage * readPPM(char * filename)
          	exit(1);
     	}
 	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp_color);
-
-    //check rgb component depth
-    if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
+    
+	//check rgb component depth
+    
+	if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
          syslog(LOG_ERR, "'%s' does not have 8-bits components\n", filename);
          exit(1);
-    }
+    
+	}
 
-    while (fgetc(fp) != '\n');
-    //memory allocation for pixel data
-    img->data = (struct PPMpixel *)malloc(img->x * img->y * sizeof(struct PPMpixel));
-
-    if (!img->data) {
-         syslog(LOG_ERR, "Unable to allocate memory\n");
-         exit(1);
-    }
-
-    //read pixel data from file
-    if (fread(img->data, sizeof(uint8_t),3 * img->x * img->y, fp) != img->y) {
-         syslog(LOG_ERR, "Error loading image '%s'\n", filename);
-         exit(1);
-    }
-
-    fclose(fp);
-
-    syslog(LOG_INFO, "Done reading image\n");
-    return img;
+ 	char c; 
+ 	while ( (c = fgetc(fp)) != '\n') 
+	{
+		fputc(c,t);
+	};
+	fputc(c,t);
+    	
+	/*Allocate memory for pixel data*/
+    	img->data = (struct PPMpixel *)malloc(img->x * img->y * sizeof(struct PPMpixel));
 
 
+    	if (!img->data) {
+         	syslog(LOG_ERR, "Unable to allocate memory\n");
+         	exit(1);
+    	}
+
+    	/*Read pixel data from file*/   	
+	for(int i=0; i<RES; i++)
+	{
+		fread(&pixArr[i],3*sizeof(uint8_t),1,fp);
+		fputc(pixArr[i].red, t);
+		fputc(pixArr[i].green, t);
+		fputc(pixArr[i].blue, t);
+	}
+
+	fclose(t);
+    	fclose(fp);
+
+    	syslog(LOG_INFO, "Done reading image\n");
+    
+	return img;
 }
 
 uint32_t pixel_color(uint8_t r, uint8_t g, uint8_t b, struct fb_var_screeninfo *vinfo)
@@ -180,9 +193,10 @@ int main(int argc, char * argv[])
 			/*x + y*/	
 			long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
 			int pixel = x + y*vinfo.xres;
-			*((uint32_t*)(fbp + location)) = pixel_color(image->data[pixel].red,image->data[pixel].green,image->data[pixel].blue, &vinfo);
-			//*((uint32_t*)(fbp + location)) = pixel_color((uint8_t)x,0x00,0xFF, &vinfo);
-			//syslog(LOG_INFO, "x: %d, y: %d, loc: %d", x, y, location);
+			*((uint32_t*)(fbp + location)) = pixel_color(pixArr[pixel].red,pixArr[pixel].green,pixArr[pixel].blue, &vinfo);
+			//*((uint32_t*)(fbp + location)) = pixel_color(image->data[pixel].red,image->data[pixel].green,image->data[pixel].blue, &vinfo);
+	
+
 		}
 	}
 
