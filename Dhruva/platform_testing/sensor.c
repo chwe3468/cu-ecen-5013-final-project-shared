@@ -18,7 +18,7 @@
 #include <syslog.h>
 #include <errno.h>
 
-
+/* struct for thread locking */
 typedef struct{
     pthread_mutex_t lock;
 } thread_data_t;
@@ -34,9 +34,9 @@ thread_data_t td;
 bool sig_handler_exit = false;
 
 int main(void){
-
+	// signal handler handle
 	struct sigaction sa;
-
+	// timer thread handles
 	struct timespec start_time;
 	struct sigevent sev;
 	memset(&td, 0, sizeof(thread_data_t));
@@ -57,12 +57,12 @@ int main(void){
 		exit(1);
 	}
 	printf("Set up sensor handler\n");
-
+	// initialize sensor log for inotify interface
 	system("/usr/bin/gettemp.sh");
 
 	// daemonize
     daemonize();
-
+    // timer variables
     int clock_id = CLOCK_MONOTONIC;
     memset(&sev, 0, sizeof(struct sigevent));
     // Setup a call to timer_thread passing in the td structure as the sigev_value argument
@@ -72,10 +72,10 @@ int main(void){
     if(timer_create(clock_id, &sev, &timerid) != 0 ){
         syslog(LOG_ERR, "sensor: %d, %s failed to create timer", errno, strerror(errno));
     }
-
+    // set up timer for 5 seconds. Program will poll sensor every 5 seconds
 	setup_timer(clock_id, timerid, 5, &start_time);
 	syslog(LOG_INFO, "Set up timer for sensor\n");
-
+	// main loop to spin in. Check for sig_handler_exit to exit the program
 	while(1){
 		if(sig_handler_exit){
 			closelog();
@@ -98,6 +98,7 @@ static void timer_thread(union sigval sigval){
         printf("Error %d (%s) locking thread data!\n", errno, strerror(errno));
     } else {
 		// call shell script to get the temperature and log it to /var/tmp/log/log.txt
+		// expects a string of size 5 chars
 		system("/usr/bin/gettemp.sh");
 		syslog(LOG_INFO, "ran temperature script\n");
     }

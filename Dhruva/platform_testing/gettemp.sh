@@ -7,21 +7,22 @@ LOGFILE="${LOGDIR}/log.txt"
 
 if !([ -d "${LOGDIR}" ])
 then
-	# build log directory if it doesn't exist
+	# build log directory and log file if it doesn't exist
 	cd "/var/tmp/"
 	mkdir -p "$LOGDIR"
 	touch "${LOGFILE}"
 fi
-
+# build the log file if it doesn't exist
 touch "${LOGFILE}"
-
+# initialize the string
 string="temp=00.0'C"
+# poll the VideoCore GPU to get the CPU temperature
+# returns a string "temp=xx.x`C"
 string=$(vcgencmd "measure_temp")
-# strip the front and the end of the string to isolate the temperature
+# strip the beginning and the end of the string to isolate the temperature value
 string2=${string#"temp="}
-string2=${string2%"'C"}
-
+string2=${string2%"'C"} # because the front fell off
+# append the processed string to the log file
 echo $string2 >> "${LOGFILE}"
-# echo $string2
 
 return 0

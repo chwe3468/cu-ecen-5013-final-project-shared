@@ -1,13 +1,12 @@
 #include <sys/inotify.h>
 #include <limits.h>
-#include <sys/types.h>  /* Type definitions used by many programs */
-#include <stdio.h>      /* Standard I/O functions */
+#include <sys/types.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>     /* Prototypes for many system calls */
-#include <errno.h>      /* Declares errno and defines error constants */
-#include <string.h>     /* Commonly used string-handling functions */
-#include <stdbool.h>    /* 'bool' type plus 'true' and 'false' constants */
-// http://man7.org/tlpi/code/online/diff/inotify/demo_inotify.c.html
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdbool.h>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -24,12 +23,12 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+// define macros for server port and IP address (public)
 #define PORT "9000"
-// #define HOSTNAME "127.0.0.1"
+// #define HOSTNAME "127.0.0.1" // localhost
 #define HOSTNAME "73.78.219.44"
-#define MAXDATASIZE 8192
 #define BACKLOG 100
-
+// define macro for inotify interface
 #define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX + 1))
 
 typedef struct{
@@ -42,51 +41,34 @@ static inline void timespec_add(struct timespec *result, const struct timespec *
 static void daemonize(void);
 void sig_handler(int signo);
 void *get_in_addr(struct sockaddr *sa);
-char * displayInotifyEvent(struct inotify_event *i);
+char * get_latest_temperature(struct inotify_event *i);
 int send_temperature(struct addrinfo *info);
 
 timer_t timerid;
 thread_data_t td;
 bool sig_handler_exit = false;
 
+// log file vars
 const char filename[] = "/var/tmp/log/log.txt";
 FILE *fd;
+
+// inotify interface vars
 static const long max_len = 5 + 1;
 char fbuff[8];
 char * sensorbuf;
 bool is_done = false;
 
+// socket vars
 int sockfd;
 char ip_addr[INET6_ADDRSTRLEN];
 
-/* Display information from inotify_event structure */
-char * displayInotifyEvent(struct inotify_event *i){
-    char *last_newline;
-    char *last_line;
-
-    if(i->mask & IN_CLOSE_WRITE){
-        syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
-        if((fd = fopen(filename, "r")) != NULL){
-            fseek(fd, -max_len, SEEK_END);
-            fread(fbuff, (max_len - 1), 1, fd);
-            fclose(fd);
-
-            fbuff[max_len-1] = '\0';
-            last_newline = strchr(fbuff, '\n');
-            last_line = last_newline + 1;
-
-            syslog(LOG_INFO, "captured: [%s]\n", last_line);
-        }
-    }
-    return last_line;
-}
-
-
 int main(void){
+	// signal handler handle
     struct sigaction sa;
+    // socket vars
     struct addrinfo hints, *servinfo;
     int rv;
-
+    // timer thread vars
     struct timespec start_time;
     struct sigevent sev;
     memset(&td, 0, sizeof(thread_data_t));
@@ -107,7 +89,7 @@ int main(void){
         exit(1);
     }
     syslog(LOG_INFO, "Set up handler for client1\n");
-
+    // set up socket
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -129,11 +111,12 @@ int main(void){
     if(timer_create(clock_id, &sev, &timerid) != 0 ){
         syslog(LOG_ERR, "client1: %d, %s failed to create timer", errno, strerror(errno));
     }
-    // set timer for 6 second intervals
+    // set timer for inotify interface for 6 second intervals. Client will activate inotify interface to get latest sensor data
     setup_timer(clock_id, timerid, 6, &start_time);
     syslog(LOG_INFO, "Set up inotify timer\n");
 
     sensorbuf = NULL;
+    // main loop to spin in. Check for sig_handler_exit to exit the program. Check if timer thread is done, then send latest sensor data to server
     syslog(LOG_INFO, "Entering main loop\n");
     while(1){
         if(sig_handler_exit){
@@ -161,8 +144,34 @@ int main(void){
     return 0;
 }
 
+/* Retrieve latest sensor data from inotify_event structure watching log file for close writes
+ * inspired by http://man7.org/tlpi/code/online/diff/inotify/demo_inotify.c.html
+ * returns the last line of data (latest) as a string
+ */
+char * get_latest_temperature(struct inotify_event *i){
+    char *last_newline;
+    char *last_line;
+	// if interface detects a close write (file closed after writing), then open file for reading and get the last line of data
+    if(i->mask & IN_CLOSE_WRITE){
+        syslog(LOG_INFO, "IN_CLOSE_WRITE\n");
+        if((fd = fopen(filename, "r")) != NULL){
+            fseek(fd, -max_len, SEEK_END); // seek to end of file and movemax_len bytes back
+            fread(fbuff, (max_len - 1), 1, fd);	// read last line
+            fclose(fd);
+            // process buffer to be a string
+            fbuff[max_len-1] = '\0';
+            last_newline = strchr(fbuff, '\n');
+            last_line = last_newline + 1;
+
+            syslog(LOG_INFO, "captured: [%s]\n", last_line);
+        }
+    }
+    return last_line;
+}
+
+
 /**
-* A thread which runs every timer_period_ms milliseconds
+* A thread which runs every timer_period_s seconds
 * Assumes timer_create has configured for sigval.sival_ptr to point to the
 * thread data used for the timer
 * inspired by https://github.com/cu-ecen-5013/aesd-lectures/blob/master/lecture9/timer_thread.c
@@ -180,25 +189,26 @@ static void timer_thread(union sigval sigval){
         if(pthread_mutex_lock(&td->lock) != 0){
             syslog(LOG_ERR, "Error %d (%s) locking thread data!\n", errno, strerror(errno));
         } else {
-            inotifyFd = inotify_init();                 /* Create inotify instance */
+            inotifyFd = inotify_init(); // create inotify instance
             if (inotifyFd == -1){
                 perror("inotify_init");
                 exit(-1);
             }
 
-            /* add a watch for IN_CLOSE_WRITE events */
+            // add a watch for IN_CLOSE_WRITE events
             wd = inotify_add_watch(inotifyFd, filename, IN_CLOSE_WRITE);
             if (wd == -1){
                 perror("inotify_add_watch");
                 exit(-1);
             }
-            /* Read events forever */
+            // read events forever
             numRead = read(inotifyFd, buf, BUF_LEN);
+            // didn't read anything
             if (numRead == 0){
                 perror("read() from inotify fd returned 0!");
                 exit(-1);
             }
-
+            // failed to read anything
             if (numRead == -1){
                 perror("read");
                 exit(-1);
@@ -206,10 +216,10 @@ static void timer_thread(union sigval sigval){
 
             syslog(LOG_INFO, "Read %ld bytes from inotify fd\n", (long)numRead);
 
-            /* Process all of the events in buffer returned by read() */
+            // process all of the events in buffer returned by read()
             for (p = buf; p < buf + numRead; ) {
                 event = (struct inotify_event *) p;
-                sensorbuf = displayInotifyEvent(event);
+                sensorbuf = get_latest_temperature(event);
                 p += sizeof(struct inotify_event) + event->len;
                 is_done = true;
                 syslog(LOG_INFO, "Thread done is %d\n", is_done);
@@ -252,6 +262,7 @@ static bool setup_timer(int clock_id, timer_t timerid, unsigned int timer_period
     return success;
 }
 
+
 // daemonize program
 static void daemonize(void){
     pid_t pid;
@@ -282,6 +293,7 @@ static void daemonize(void){
     syslog(LOG_NOTICE, "client daemonized");
 }
 
+
 // inspired by beej.us
 void *get_in_addr(struct sockaddr *sa){
     if(sa->sa_family == AF_INET){
@@ -289,6 +301,7 @@ void *get_in_addr(struct sockaddr *sa){
     }
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
+
 
 /**
 * set @param result with @param ts_1 + @param ts_2
@@ -304,7 +317,7 @@ static inline void timespec_add( struct timespec *result, const struct timespec 
 }
 
 
-// signal handler to catch signals, shutdwn socket 
+// signal handler to catch signals, shutdown socket 
 void sig_handler(int signo){
     int saved_errno = errno;
     if(signo == SIGINT || signo == SIGTERM){
@@ -316,7 +329,8 @@ void sig_handler(int signo){
     errno = saved_errno;
 }
 
-/* connect to server and send temperature data */
+
+// connect to server and send latest sensor data
 int send_temperature(struct addrinfo *info){
     struct addrinfo *p;
     int ret = 0;
@@ -344,7 +358,7 @@ int send_temperature(struct addrinfo *info){
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), ip_addr, sizeof(ip_addr));
     syslog(LOG_INFO, "client: connecting to %s\n", ip_addr);
-
+    // cat newline to end of string for easier parsing on server
     strcat(sensorbuf, "\n");
     bytes_sent = send(sockfd, sensorbuf, strlen(sensorbuf), 0);
     if(bytes_sent == -1){
