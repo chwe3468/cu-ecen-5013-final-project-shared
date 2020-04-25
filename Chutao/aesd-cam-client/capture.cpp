@@ -5,7 +5,7 @@
  *
  */
 #include "opencv2/opencv.hpp"
-#include "capture.hpp"
+//#include "capture.hpp"
 //#define CAPTURE_APP
 
 using namespace cv;

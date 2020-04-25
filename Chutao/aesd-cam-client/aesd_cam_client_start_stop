@@ -2,7 +2,7 @@
 case "$1" in
 	start)
 		echo "Starting aesd_cam_client"
-		start-stop-daemon -S -n aesd_client -a /usr/bin/aesd_cam_client -- -d
+		start-stop-daemon -S -n aesd_cam_client -a /usr/bin/aesd_cam_client -- -d
 		;;
 	stop)
 		echo "Stopping aesd_cam_client"
