@@ -67,7 +67,17 @@ void readPPM(char * filename)
 		exit(1);
 	}
 	//syslog(LOG_INFO, "buf = %s", buf);
-	    
+
+	/*Scan through comments*/
+	char c = getc(fp);
+	while(c == '#')
+	{
+		while(getc(fp) != '\n');
+		c = getc(fp);
+	}
+	ungetc(c,fp);
+
+
     	if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) 
 	{
 		syslog(LOG_ERR, "Invalid image size (error loading '%s')\n", filename);
@@ -87,7 +97,7 @@ void readPPM(char * filename)
          	syslog(LOG_ERR, "Invalid rgb component (error loading '%s')\n", filename);
          	exit(1);
     	}
-	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp_color);
+	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp);
     
 	
   	

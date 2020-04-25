@@ -162,7 +162,7 @@ void * processRX(void * args)
 
   FILE * fp;
   /*Open the file for read/append, create if it doesn't exist*/
-  if(!strcmp(logFile, "71.205.27.171")) 
+  if(strcmp(IPBuffer, "71.205.27.171") == 0) 
   {
 	syslog(LOG_INFO, "Image file IP");
 	
@@ -215,12 +215,12 @@ void * processRX(void * args)
     syslog(LOG_INFO, "Total count = %d", total_count);
     
     /*Add a timestamp if this is not image data*/
-    if(strcmp(logFile, "71.205.27.171"))
-    	addTimestamp(fp);
+   if(strcmp(IPBuffer, "71.205.27.171"))
+   	addTimestamp(fp);
    
      pthread_mutex_lock(&info->nodeLock);
     /*Ensure entire buffer is written*/
-    while((written = fwrite((char *)rxbuffer, sizeof(char), rxcount, fp)) != to_write)
+    while((written = fwrite((char *)rxbuffer, sizeof(char), rxcount, fp)) < to_write)
     {
       //syslog(LOG_INFO, "wrote %d bytes", written); 
       to_write -= written;
