@@ -1,6 +1,6 @@
-/* aesdsocket.c
+/* serversocket.c
 * Author: Sam Solondz
-* Description: This file implements the socket server described in ECEN5013 assignment6
+* Description: This file implements a server to store data for each connection
 * */
 
 #include <sys/types.h>
@@ -24,7 +24,8 @@
 #include <time.h>
 
 
-#define RXBUFFERSIZE 2048
+#define RXBUFFERSIZE 240000
+
 
 /*Uncomment to echo back to sender*/
 //#define WRITEBACK 1
@@ -83,6 +84,11 @@ static void signal_handler (int signo)
 /*Add a timestamp to a given filepointer
  * Mutex for file is locked by caller thread
  */
+
+/*Add a timestamp to the logFile in RFC 2822-compliant format
+*
+*@param fp file pointer passed from processRX()
+*/
 void addTimestamp(FILE * fp)
 {
 	int err = 0;
@@ -156,14 +162,25 @@ void * processRX(void * args)
   
   pthread_mutex_unlock(&info->nodeLock);
 
-
+  FILE * fp;
   /*Open the file for read/append, create if it doesn't exist*/
-  FILE *fp = fopen(logFile, "a+");
+  if(!strcmp(logFile, "71.205.27.171")) 
+  {
+	syslog(LOG_INFO, "Image file IP");
+	
+	/*Overwrite the image file each time*/
+	fp = fopen(logFile, "w+");
+  }
+  else
+  {
+	fp = fopen(logFile, "a+");
+  }
+  
   if(!fp)
   {
     err = errno;
     perror("File creation");
-    syslog(LOG_ERR, "Could not create file %s, errno: %s", writefile, strerror(err));
+    syslog(LOG_ERR, "Could not create file %s, errno: %s", logFile, strerror(err));
     return 0;
   }
 
@@ -190,19 +207,20 @@ void * processRX(void * args)
       syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
 
-      syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
+      //syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
       //syslog(LOG_INFO, "%s: size: %ld", IPBuffer, strlen(rxbuffer));
     
     }
-
     int to_write = rxcount;
     int written = 0;
-    /*Lock the writefile mutex*/
-    pthread_mutex_lock(&writefileLock);
     
-    /*Add a timestamp*/
-    addTimestamp(fp);
+
     
+    /*Add a timestamp if this is not image data*/
+    if(strcmp(logFile, "71.205.27.171"))
+    	addTimestamp(fp);
+   
+     pthread_mutex_lock(&info->nodeLock);
     /*Ensure entire buffer is written*/
     while((written = fwrite((char *)rxbuffer, sizeof(char), rxcount, fp)) != to_write)
     {
@@ -210,7 +228,7 @@ void * processRX(void * args)
       to_write -= written;
      if(written == EOF)
       {
-        pthread_mutex_unlock(&writefileLock);
+        pthread_mutex_unlock(&info->nodeLock);
         err = errno;
         perror("Write rxbuffer");
         syslog(LOG_ERR, "Could not write rxbuffer, errno: %s", strerror(err));
@@ -219,61 +237,11 @@ void * processRX(void * args)
     }
 
     syslog(LOG_INFO, "wrote %d bytes", written); 
-    pthread_mutex_unlock(&writefileLock);
+    pthread_mutex_unlock(&info->nodeLock);
 
-    /*Parse the rxbuffer for newline character*/
-    for(int i = 0; i < rxcount; i++)
-    {
-      if(rxbuffer[i] == '\n')
-      {
-        pthread_mutex_lock(&writefileLock);
-        /*Return full content of writefile back to client*/
-        fseek(fp, 0, SEEK_END);
-        int filesize = ftell(fp);
-        fseek(fp, 0, SEEK_SET);   /*Set back to beginning*/
-        pthread_mutex_unlock(&writefileLock);
-
-        /*Malloc enough memory to read in the file contents to transmit*/
-
-        char * buffer = 0;
-
-        buffer = malloc(filesize);
-        if(buffer)
-        {
-          pthread_mutex_lock(&writefileLock);
-          fread(buffer, sizeof(char), filesize, fp);
-          pthread_mutex_unlock(&writefileLock);
-        }
-        else
-        {
-          syslog(LOG_ERR, "Could not malloc %d bytes", filesize);
-          break;
-        }
-
-        #ifdef WRITEBACK
-        int sent = 0;
-        int to_send = filesize;
-        /*Ensure entire file is sent back*/
-        while((sent = send(accepted, (const void *)buffer, filesize, 0)) != to_send)
-        {
-          to_send -= sent;
-          if(sent == -1)
-          {
-            err = errno;
-            syslog(LOG_ERR, "Could not send data to client, errno: %s", strerror(err));
-            free(buffer);
-            break;
-          }
-
-        }
-        #endif
-
-        /*Free the send buffer*/
-        free(buffer);
-        break;
-      }
-    }
+ 
   }
+
 
   /*Close file pointer to writefile */
   fclose(fp);
@@ -290,68 +258,8 @@ void * processRX(void * args)
 }
 
 
-/*Add a timestamp to the writfile in RFC 2822-compliant format
-*
-*@param sigevl_val data passed from notification, unused
-*/
-
-void * timestamp(union sigval sigev_val)
-{
-  int err = 0;
-  syslog(LOG_INFO, "Timer thread %ld entered", pthread_self());
-
-  time_t raw;
-  struct tm *curr;
-
-  time(&raw);
-  curr = localtime(&raw);
-  if(curr == NULL)
-  {
-    err = errno;
-    syslog(LOG_ERR, "error getting current time: %s", strerror(err));
-
-    return 0;
-  }
-  else
-  syslog(LOG_INFO, "Current local time and date: %s", asctime(curr));
 
 
-  /*Open the file for read/append, create if it doesn't exist*/
-  FILE *fp = fopen(writefile, "a+");
-  if(!fp)
-  {
-    err = errno;
-    syslog(LOG_ERR, "Could not create file %s, errno: %s", writefile, strerror(err));
-    return 0;
-  }
-
-  char timestamp[80] = {0};
-  strftime(timestamp, sizeof(timestamp),"timestamp:%a, %d %b %Y %T %z\n", curr);
-
-
-  pthread_mutex_lock(&writefileLock);
-  int written;
-  int to_write = strlen(timestamp);
-  while((written = fwrite(timestamp, sizeof(char), strlen(timestamp), fp)) != to_write)
-  {
-    to_write -= written;
-    if(written == EOF)
-    {
-      pthread_mutex_unlock(&writefileLock);
-      err = errno;
-      perror("Write rxbuffer");
-      syslog(LOG_ERR, "Could not write rxbuffer, errno: %s", strerror(err));
-
-      return 0;
-    }
-  }
-
-  pthread_mutex_unlock(&writefileLock);
-
-  fclose(fp);
-
-  return 0;
-}
 
 /*
 * Given a filename and text string
@@ -475,38 +383,6 @@ int main(int argc, char * argv[])
 
   }
 
-
-  /*Setup POSIX Timer and sigevent struct*/
-  struct sigevent evp;
-  timer_t timer;
-  evp.sigev_value.sival_ptr = &timer;
-  evp.sigev_notify = SIGEV_THREAD;	/*Specify behavior of timer expiration: create a new thread*/
-  evp.sigev_notify_attributes = NULL;
-  evp.sigev_notify_function = (void *) timestamp;
-
-  if(timer_create(CLOCK_MONOTONIC, &evp, &timer))
-  {
-    err = errno;
-    syslog(LOG_ERR, "error creating timer: %s", strerror(err));
-    return -1;
-  }
-
-  #ifdef TIMESTAMP
-  /*Set expiration for 10 seconds, rearm after expiration*/
-  struct itimerspec exp;
-  exp.it_interval.tv_sec = 10;
-  exp.it_interval.tv_nsec = 0;
-  exp.it_value.tv_sec = 10;
-  exp.it_value.tv_nsec = 0;
-
-  /*Arm the timer*/
-  if(timer_settime(timer, 0, &exp, NULL))
-  {
-    err = errno;
-    syslog(LOG_ERR, "error arming timer: %s", strerror(err));
-    return -1;
-  }
-  #endif
   /*Listen*/
   if(listen(socketfd, 5))
   {
@@ -658,18 +534,6 @@ int main(int argc, char * argv[])
       int cleaned = 0;
 
       syslog(LOG_INFO, "Cleaning up LL\n");
-
-      #ifdef TIMESTAMP
-      /*Destroy the timer*/
-      if(timer_delete(timer))
-      {
-        err = errno;
-        syslog(LOG_ERR, "Unable to delete timer, error %s\n", strerror(err));
-      }
-      #endif
-
-
-
       /*Kill each running thread and close all client connections in Linked List*/
       while(head != NULL)
       {

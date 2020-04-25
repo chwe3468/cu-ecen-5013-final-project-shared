@@ -30,7 +30,6 @@ struct PPMpixel{
 
 struct PPMimage{
 	int x, y;
- 	struct PPMpixel * data;
 };
 
 
@@ -69,6 +68,12 @@ void readPPM(char * filename)
          	exit(1);
     	}
 	syslog(LOG_INFO, "x: %d y: %d",  img->x, img->y);
+	
+	if(img->x != 320 || img->y != 240)
+	{
+		syslog(LOG_ERR, "Image must be 320x240");
+		exit(1);
+	}
 
     	//read rgb component
 	int rgb_comp_color;
@@ -87,14 +92,8 @@ void readPPM(char * filename)
 	}
 
  	char c; 
- 	while ( (c = fgetc(fp)) != '\n') 
-	{
-		//fputc(c,t);
-	};
-	//fputc(c,t);
+ 	while ((c = fgetc(fp)) != '\n'); 
     	
-
-
     	/*Read pixel data from file*/   	
 	for(int i=0; i<RES; i++)
 	{
