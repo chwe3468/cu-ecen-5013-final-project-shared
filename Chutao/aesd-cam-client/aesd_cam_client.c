@@ -52,7 +52,7 @@
 #define SAM_IP_ADDR "73.78.219.44" // Sam's public
 #define PERIOD_T 10
 #define PPM_HEADER_SIZE 3
-#define DEV_VIDEO_NUM 0
+#define DEV_VIDEO_NUM 2
 /********************* Typedef *********************/
 
 /********************* Error Checking Define *********************/
@@ -369,7 +369,7 @@ void *send_thread(void * arg)
 	{
 		int error_code = 0;
 		/* Obtain timer_flag */
-		pthread_mutex_lock(&timer_flag);
+		pthread_mutex_lock(&image_lock);
 		if((caught_sigint==true)||(caught_sigterm==true))
 		{
 			break;
@@ -438,7 +438,7 @@ void *send_thread(void * arg)
 	        /* Send image to Sam over TCP */
 			ssize_t send_size = send(sockfd,local_buf,total_read_size,0);
 			ERROR_CHECK_LT_ZERO(send_size);
-			syslog(LOG_USER, "Image sent");
+			syslog(LOG_USER, "Image sent:send_size = %ld",send_size);
         }
 
 
@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	error_code = getaddrinfo(CHUTAO_IP_ADDR, PORT, &hints, &res);
+	error_code = getaddrinfo(SAM_IP_ADDR, PORT, &hints, &res);
 		// Check for error
 		if (error_code != 0)
 		{
