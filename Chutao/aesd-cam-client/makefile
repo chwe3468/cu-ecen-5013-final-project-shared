@@ -18,7 +18,7 @@ ifeq ($(CCFLAGS),)
 endif
 
 ifeq ($(LDFLAGS),)
-	LDFLAGS = -lpthread -lrt
+	LDFLAGS = -pthread -lrt
 endif
 
 export CXXFLAGS = -pthread -lrt
