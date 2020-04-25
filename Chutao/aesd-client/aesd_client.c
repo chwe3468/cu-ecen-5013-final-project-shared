@@ -261,7 +261,7 @@ void *capture_thread(void * arg)
 		}
 
 		/* Capture Image */
-		capture_write(DEV_VIDEO_NUM);
+		//capture_write(DEV_VIDEO_NUM);
 		/* open image file at /var/tmp/cap.ppm */
 		int fd = open("/var/tmp/cap.ppm",
 				O_RDONLY/*|O_APPEND*/,

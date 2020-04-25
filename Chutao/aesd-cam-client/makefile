@@ -18,7 +18,7 @@ ifeq ($(CCFLAGS),)
 endif
 
 ifeq ($(LDFLAGS),)
-	LDFLAGS = -lpthread -lrt
+	LDFLAGS = -lrt -lpthread 
 endif
 
 DEPS = queue.h # header files
@@ -31,7 +31,7 @@ all: $(TARGET)
 
 
 aesd_cam_client: $(OBJ)
-	$(CC) $(CCFLAGS) -o $@ $^ -lstdc++ $(LDFLAGS) `pkg-config --libs opencv` $(CPPLIBS) 
+	$(CC) $(CCFLAGS) -o $@ $^ -lstdc++  `pkg-config --libs opencv` $(CPPLIBS) $(LDFLAGS)
 
 # %.o: %.c $(DEPS)
 # 	$(CC) $(CCFLAGS) -c -o $@ $<  
