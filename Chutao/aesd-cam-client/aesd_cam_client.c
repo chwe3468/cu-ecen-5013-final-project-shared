@@ -323,7 +323,7 @@ void *capture_thread(void * arg)
 		time( &t );
 		tmp = localtime( &t );
 		// using strftime to display time
-		strftime(MY_TIME, sizeof(MY_TIME), "\n#timestamp:%a, %d %b %Y %T %z \n", tmp);
+		strftime(MY_TIME, sizeof(MY_TIME), "#timestamp:%a, %d %b %Y %T %z \n", tmp);
 		size_t str_size = strlen(MY_TIME);
 		write_size = write(fd, MY_TIME, (size_t) str_size);
 		// Check for error
