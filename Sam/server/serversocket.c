@@ -81,11 +81,8 @@ static void signal_handler (int signo)
 }
 
 
-/*Add a timestamp to a given filepointer
- * Mutex for file is locked by caller thread
- */
 
-/*Add a timestamp to the logFile in RFC 2822-compliant format
+/*Add a timestamp to the logFile. Mutex for file must be obtained by caller thread.
 *
 *@param fp file pointer passed from processRX()
 */
@@ -131,6 +128,7 @@ void addTimestamp(FILE * fp)
   	}
 
 	return;
+
 }
 
 /*
@@ -185,18 +183,22 @@ void * processRX(void * args)
   }
 
   
-  
+ 
+  int total_count = 0;
   /*Receive and write date*/
   while(!signal_exit)
   {
     /*If packet is greater than RXBUFFERSIZE, it will be handled on the next loop because of TCP stream socket.
     Will be queued by kernel for next loop. */
 
-    char rxbuffer[RXBUFFERSIZE];
+    char * rxbuffer = (char *) malloc(RXBUFFERSIZE);
+    //memset(rxbuffer, '\0', sizeof(rxbuffer));
     int totalwritten = 0;
     int rxcount = 0;
-
+ 
     rxcount = recv(accepted, (void *)(rxbuffer), RXBUFFERSIZE, 0);
+    total_count += rxcount;
+   
     if(rxcount ==  0)
     {
       syslog(LOG_ERR, "Client %s disconnected",  IPBuffer);
@@ -206,15 +208,11 @@ void * processRX(void * args)
     {
       syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
-
-      //syslog(LOG_INFO, "%s: %s", IPBuffer, rxbuffer);
-      //syslog(LOG_INFO, "%s: size: %ld", IPBuffer, strlen(rxbuffer));
     
     }
     int to_write = rxcount;
     int written = 0;
-    
-
+    syslog(LOG_INFO, "Total count = %d", total_count);
     
     /*Add a timestamp if this is not image data*/
     if(strcmp(logFile, "71.205.27.171"))
@@ -236,12 +234,12 @@ void * processRX(void * args)
       }
     }
 
-    syslog(LOG_INFO, "wrote %d bytes", written); 
+    //syslog(LOG_INFO, "wrote %d bytes", written); 
     pthread_mutex_unlock(&info->nodeLock);
 
- 
+    free(rxbuffer);
   }
-
+	
 
   /*Close file pointer to writefile */
   fclose(fp);

@@ -2,9 +2,10 @@
 *  C file to copy an image to the framebuffer
 *  2.2" pi tft screen resolution
 *  W = 320, H = 240
+*  6-bit color
 * Code referenced from 
 * https://stackoverflow.com/questions/2693631/read-ppm-file-and-store-it-in-an-array-coded-with-c 
-* 
+* and
 * http://betteros.org/tut/graphics1.php 
  */
 #include <linux/fb.h>
@@ -36,7 +37,12 @@ struct PPMimage{
 #define RES 76800	
 struct PPMpixel pixArr[RES];
 
-#define RGB_COMPONENT_COLOR 255
+#define RGB_COMPONENT 255
+
+/*Read in a PPM file. Currently, only 320x240 resolutions are supported.
+*
+*@param fp file pointer passed from main().
+*/
 void readPPM(char * filename)
 {
 	int err = 0;
@@ -76,23 +82,24 @@ void readPPM(char * filename)
 	}
 
     	//read rgb component
-	int rgb_comp_color;
-    	if (fscanf(fp, "%d", &rgb_comp_color) != 1) {
+	int rgb_comp;
+    	if (fscanf(fp, "%d", &rgb_comp) != 1) {
          	syslog(LOG_ERR, "Invalid rgb component (error loading '%s')\n", filename);
          	exit(1);
     	}
 	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp_color);
     
-	//check rgb component depth
-    
-	if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
+	
+  	
+	if (rgb_comp!= RGB_COMPONENT) {
          syslog(LOG_ERR, "'%s' does not have 8-bits components\n", filename);
          exit(1);
     
 	}
 
- 	char c; 
- 	while ((c = fgetc(fp)) != '\n'); 
+ 	
+	
+ 	while (fgetc(fp) != '\n'); 
     	
     	/*Read pixel data from file*/   	
 	for(int i=0; i<RES; i++)
@@ -107,6 +114,11 @@ void readPPM(char * filename)
     
 }
 
+/*Convert 8-bit color values to 6-bit and package in a 32-bit value.
+*
+*@param pixel pixel struct containing rgb data
+*@param vinfo pointer to fb_var_screeninfo struct to obtain pixel offsets
+*/
 uint32_t convert_8_to_6(struct PPMpixel pixel, struct fb_var_screeninfo *vinfo)
 {
 	uint32_t pixelTotal = ((pixel.red>>2) << vinfo->red.offset) | ((pixel.blue >> 2) << vinfo->blue.offset) | ((pixel.green >> 2) << vinfo->green.offset);
@@ -116,7 +128,6 @@ uint32_t convert_8_to_6(struct PPMpixel pixel, struct fb_var_screeninfo *vinfo)
 
 int main(int argc, char * argv[])
 {
-
 	/*Setup logging*/
 	openlog(NULL, LOG_PID, LOG_USER);
 	syslog(LOG_INFO, "-----Beginning fbwrite-----\n");
@@ -149,21 +160,19 @@ int main(int argc, char * argv[])
 //	syslog(LOG_INFO, "vinfo.yres_virtual %d\n",vinfo.yres_virtual); 
 //	syslog(LOG_INFO, "finfo.linelength %d\n",finfo.line_length); 
 //	syslog(LOG_INFO, "screensize = %ld\n", screensize);
-
-	char *fbp = (char *)mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
-	int x,y;
-
 //	syslog(LOG_INFO, "vinfo.xres = %d\n", vinfo.xres);
 //	syslog(LOG_INFO, "vinfo.yres = %d\n", vinfo.yres);
-
 //	syslog(LOG_INFO, "vinfo.yoffset = %d\n", vinfo.yoffset);
 //	syslog(LOG_INFO, "vinfo.xoffset = %d\n", vinfo.xoffset);
-
-
 //	syslog(LOG_INFO, "vinfo.red.offset: %d, green: %d, blue: %d, transp: %d", vinfo.red.offset, vinfo.green.offset, vinfo.blue.offset, vinfo.transp.offset);
-	for (x=0; x<vinfo.xres; x++)
+	
+	char *fbp = (char *)mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
+	int x = 0;
+	int y = 0;
+	
+	for (x = 0; x < vinfo.xres; x++)
 	{
-		for (y=0; y<vinfo.yres; y++)
+		for (y = 0; y < vinfo.yres; y++)
 		{
 
 			long int location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
