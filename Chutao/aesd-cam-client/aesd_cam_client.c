@@ -52,7 +52,7 @@
 #define SAM_IP_ADDR "73.78.219.44" // Sam's public
 #define PERIOD_T 10
 #define PPM_HEADER_SIZE 3
-#define DEV_VIDEO_NUM 2
+#define DEV_VIDEO_NUM 0
 /********************* Typedef *********************/
 
 /********************* Error Checking Define *********************/
