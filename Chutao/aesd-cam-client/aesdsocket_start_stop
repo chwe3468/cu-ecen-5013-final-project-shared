@@ -1,0 +1,16 @@
+#! /bin/sh
+case "$1" in
+	start)
+		echo "Starting aesd_cam_client"
+		start-stop-daemon -S -n aesd_client -a /usr/bin/aesd_cam_client -- -d
+		;;
+	stop)
+		echo "Stopping aesd_cam_client"
+		start-stop-daemon -K -n aesd_cam_client
+		;;
+	*)
+		echo "Usage: $0 {start|stop}"
+	exit 1
+esac
+
+exit 0
