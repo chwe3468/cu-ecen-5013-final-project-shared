@@ -31,7 +31,7 @@ all: $(TARGET)
 
 
 aesd_cam_client: $(OBJ)
-	$(CC) $(CCFLAGS) -o $@ $^ -lstdc++ $(LDFLAGS) `pkg-config --libs opencv` $(CPPLIBS) 
+	$(CC) $(CCFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ `pkg-config --libs opencv` $(CPPLIBS) 
 
 # %.o: %.c $(DEPS)
 # 	$(CC) $(CCFLAGS) -c -o $@ $<  
