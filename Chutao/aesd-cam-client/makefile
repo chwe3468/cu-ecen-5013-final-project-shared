@@ -18,7 +18,7 @@ ifeq ($(CCFLAGS),)
 endif
 
 ifeq ($(LDFLAGS),)
-	LDFLAGS = -pthread -lrt
+	LDFLAGS = -lpthread -lrt
 endif
 
 DEPS = queue.h # header files
