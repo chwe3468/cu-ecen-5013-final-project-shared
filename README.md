@@ -24,3 +24,6 @@ This repository, in general, hosts the application source code for the final pro
 [RPi2B Repository(Sam)](https://github.com/cu-ecen-5013/final-project-SamSolondz)
 
 [Shared Repository](https://github.com/chwe3468/cu-ecen-5013-final-project-shared)
+
+# Demo Videos
+Please find the Demo Outlines in the Wiki of this repository.
