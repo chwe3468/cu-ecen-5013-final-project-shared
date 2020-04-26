@@ -50,8 +50,8 @@
 #define CHUTAO_IP_ADDR "10.0.0.89" // local
 #define PORT "9000"
 #define SAM_IP_ADDR "73.78.219.44" // Sam's public
-#define PERIOD_T_SEC 0
-#define PERIOD_T_MSEC 500
+#define PERIOD_T_SEC (time_t)0
+#define PERIOD_T_MSEC 500L
 #define PPM_HEADER_SIZE 3
 #define DEV_VIDEO_NUM 0
 /********************* Typedef *********************/
@@ -130,7 +130,7 @@ int aesd_recv(int sockfd);
 int aesd_send(int sockfd);
 #ifndef USE_AESD_CHAR_DEVICE
 int delete_periodic_timer(timer_t *timerid);
-int init_periodic_timer (timer_t *timerid, uint32_t second, uint32_t msec);
+int init_periodic_timer (timer_t * timerid, time_t second, long msec);
 
 static inline void timespec_add( struct timespec *result,
                         const struct timespec *ts_1, const struct timespec *ts_2)
@@ -172,7 +172,7 @@ int delete_periodic_timer(timer_t * timerid)
 	return 0;
 }
 
-int init_periodic_timer (timer_t * timerid, uint32_t second, uint32_t msec)
+int init_periodic_timer (timer_t * timerid, time_t second, long msec)
 {
     // set up input arguments for timer_create()
 	struct sigevent sev;
@@ -196,7 +196,7 @@ int init_periodic_timer (timer_t * timerid, uint32_t second, uint32_t msec)
     }
 	struct itimerspec new_value;
     new_value.it_interval.tv_sec = second;
-    new_value.it_interval.tv_nsec = msec*1000000;
+    new_value.it_interval.tv_nsec = 500*1000000L;
     timespec_add(&new_value.it_value,&start_time,&new_value.it_interval);
 	// set timer
 
