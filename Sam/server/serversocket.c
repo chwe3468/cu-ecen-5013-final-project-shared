@@ -146,7 +146,7 @@ void * processRX(void * args)
   
   int err = 0;
   const pthread_t self_id = pthread_self();
-  syslog(LOG_INFO, "Spawned thread ID: %ld\n", self_id);
+  //syslog(LOG_INFO, "Spawned thread ID: %ld\n", self_id);
 
   char IPBuffer[50] = {0};
   char logFile[50] = {0};
@@ -164,7 +164,7 @@ void * processRX(void * args)
   /*Open the file for read/append, create if it doesn't exist*/
   if(strcmp(IPBuffer, "71.205.27.171") == 0) 
   {
-	syslog(LOG_INFO, "Image file IP");
+	//syslog(LOG_INFO, "Image file IP");
 	
 	/*Overwrite the image file each time*/
 	fp = fopen(logFile, "w+");
@@ -428,7 +428,7 @@ int main(int argc, char * argv[])
 
       strcpy(newNode->logFile, LOG_DIR);
       strcat(newNode->logFile, newNode->IPBuffer);
-      syslog(LOG_INFO, "Log file: %s", newNode->logFile);
+      //syslog(LOG_INFO, "Log file: %s", newNode->logFile);
 
       /*Add new node to end of the list.
       *Since this is the only thead writing to the Linked list, only lock when updateing*/
