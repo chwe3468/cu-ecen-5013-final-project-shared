@@ -23,15 +23,9 @@
 #include <signal.h>
 #include <time.h>
 
-
+/*Large buffer size to account for .ppm image data*/
 #define RXBUFFERSIZE 240000
 
-
-/*Uncomment to echo back to sender*/
-//#define WRITEBACK 1
-
-/*Uncommment to Timestamp the log*/
-//#define TIMESTAMP 1
 
 //Path to log directory
 #define LOG_DIR "/var/tmp/logs/"
