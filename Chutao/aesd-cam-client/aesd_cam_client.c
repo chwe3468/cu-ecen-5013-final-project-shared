@@ -50,8 +50,8 @@
 #define CHUTAO_IP_ADDR "10.0.0.89" // local
 #define PORT "9000"
 #define SAM_IP_ADDR "73.78.219.44" // Sam's public
-#define PERIOD_T_SEC (time_t)0
-#define PERIOD_T_MSEC 500L
+#define PERIOD_T_SEC (time_t)1
+#define PERIOD_T_MSEC 0L
 #define PPM_HEADER_SIZE 3
 #define DEV_VIDEO_NUM 0
 /********************* Typedef *********************/
@@ -196,7 +196,7 @@ int init_periodic_timer (timer_t * timerid, time_t second, long msec)
     }
 	struct itimerspec new_value;
     new_value.it_interval.tv_sec = second;
-    new_value.it_interval.tv_nsec = 500*1000000L;
+    new_value.it_interval.tv_nsec = msec*1000000L;
     timespec_add(&new_value.it_value,&start_time,&new_value.it_interval);
 	// set timer
 
@@ -445,7 +445,7 @@ void *send_thread(void * arg)
 
 		// free local_buf
 		free(local_buf);
-		
+		close(sockfd);
 		if((caught_sigint==true)||(caught_sigterm==true))
 		{
 			break;
