@@ -206,13 +206,13 @@ void * processRX(void * args)
     }
     else
     {
-      syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
+      //syslog(LOG_INFO, "Received %d bytes from %s", rxcount, IPBuffer);
       totalwritten += rxcount;
     
     }
     int to_write = rxcount;
     int written = 0;
-    syslog(LOG_INFO, "Total count = %d", total_count);
+    //syslog(LOG_INFO, "Total count = %d", total_count);
     
     /*Add a timestamp if this is not image data*/
    if(strcmp(IPBuffer, "71.205.27.171"))
