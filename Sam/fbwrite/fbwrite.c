@@ -54,6 +54,7 @@ void readPPM(char * filename)
 		err = errno;
 		perror("Could not open PPM file");
 		syslog(LOG_ERR, "Could not open file %s, errno: %s", filename, strerror(err));
+		free(img);
 		exit(1);
 	}
 
@@ -64,6 +65,7 @@ void readPPM(char * filename)
 		err = errno;
 		perror("Could not open PPM file");
 		syslog(LOG_ERR, "Could not fget from file %s, errno: %s", filename, strerror(err));
+		free(img);
 		exit(1);
 	}
 	//syslog(LOG_INFO, "buf = %s", buf);
@@ -81,13 +83,15 @@ void readPPM(char * filename)
     	if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) 
 	{
 		syslog(LOG_ERR, "Invalid image size (error loading '%s')\n", filename);
+		free(img);
          	exit(1);
     	}
-	syslog(LOG_INFO, "x: %d y: %d",  img->x, img->y);
+	//syslog(LOG_INFO, "x: %d y: %d",  img->x, img->y);
 	
 	if(img->x != 320 || img->y != 240)
 	{
 		syslog(LOG_ERR, "Image must be 320x240");
+		free(img);
 		exit(1);
 	}
 
@@ -95,19 +99,18 @@ void readPPM(char * filename)
 	int rgb_comp;
     	if (fscanf(fp, "%d", &rgb_comp) != 1) {
          	syslog(LOG_ERR, "Invalid rgb component (error loading '%s')\n", filename);
+		free(img);
          	exit(1);
     	}
-	syslog(LOG_INFO, "rgb_val: %d",  rgb_comp);
+	//syslog(LOG_INFO, "rgb_val: %d",  rgb_comp);
     
 	
   	
-	if (rgb_comp!= RGB_COMPONENT) {
-         syslog(LOG_ERR, "'%s' does not have 8-bits components\n", filename);
-         exit(1);
-    
-	}
-
- 	
+	if(rgb_comp!= RGB_COMPONENT) {
+         	syslog(LOG_ERR, "'%s' does not have 8-bits components\n", filename);
+		free(img);
+         	exit(1);
+    	}
 	
  	while (fgetc(fp) != '\n'); 
     	
@@ -120,7 +123,7 @@ void readPPM(char * filename)
     	fclose(fp);
 	free(img);
 
-    	syslog(LOG_INFO, "Done reading image\n");
+    	//syslog(LOG_INFO, "Done reading image\n");
     
 }
 
@@ -140,7 +143,7 @@ int main(int argc, char * argv[])
 {
 	/*Setup logging*/
 	openlog(NULL, LOG_PID, LOG_USER);
-	syslog(LOG_INFO, "-----Beginning fbwrite-----\n");
+//	syslog(LOG_INFO, "-----Beginning fbwrite-----\n");
 	
 	char * filename = argv[1];
 	//usage: ./fb_test [file]
@@ -191,7 +194,8 @@ int main(int argc, char * argv[])
 		}
 	}
 
-
+	/*Unmap the framebuffer memory*/
+	munmap(fbp, screensize);
 	close(fb_fd);
 	
 	return 0;
