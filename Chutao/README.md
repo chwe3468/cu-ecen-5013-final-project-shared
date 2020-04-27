@@ -11,19 +11,14 @@ A .ppm version of the image will be saved at /home/cap/ppm, but cannot be viewed
 </br>
 
 **AESD Client Application** (aesd-cam-client)
-Test program.
+Test program that send a string using socket TCP/IP protocol
 </br>
 
 **AESD Camera Client Application** (aesd-client)
 Send image to Sam's server or my own laptop's server every 3 sec. 
 </br>
 
-**AESD Camera Server Application** (aesd-server)
-Receive image from my Client (RPi 4), and save it as image in /home/Pictures/cap.ppm
+**AESD Server Application** (aesd-server)
+Receive image from my Client (RPi 4), and save it as image in /var/tmp/cap.ppm
 To view image in command line, please use
-'''
-cd /home/Pictures
-fbi cap.ppm
-'''
-fbi supports viewing of .ppm format.
 </br>
